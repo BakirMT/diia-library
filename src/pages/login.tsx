@@ -249,14 +249,14 @@ export default function Login() {
             
             <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">Username or Email</label>
+                <label className="text-sm font-semibold text-slate-700">Username</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-slate-400" />
+                    <User className="h-5 w-5 text-slate-400" />
                   </div>
                   <Input
                       type="text"
-                      placeholder="Enter your username or email"
+                      placeholder="Enter your username"
                       value={usernameOrEmail}
                     onChange={(e) => setUsernameOrEmail(e.target.value)}
                     className="pl-10 h-11"
