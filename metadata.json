@@ -1,0 +1,6 @@
+{
+  "name": "LIBRA",
+  "description": "Library Management Web App for managing books, members, inventory, and daily operations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
