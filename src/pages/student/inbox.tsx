@@ -3,8 +3,8 @@ import { Card } from "@/src/components/ui/card"
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
 import { Avatar } from "@/src/components/ui/avatar"
-import { Send, Paperclip } from "lucide-react"
-import { fetchMessages, sendMessage } from "@/src/lib/db"
+import { Send, Paperclip, Shield, BookOpen } from "lucide-react"
+import { fetchMessages, sendMessage, markConversationNotificationsRead } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
 import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore"
 import { db } from "@/src/lib/firebase"
@@ -14,6 +14,7 @@ export default function StudentInbox() {
   const [memberId, setMemberId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<any[]>([]);
   const [newMessage, setNewMessage] = React.useState('');
+  const [targetRole, setTargetRole] = React.useState<'Admin' | 'Librarian'>('Admin');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -60,14 +61,20 @@ export default function StudentInbox() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: any[] = [];
       snapshot.forEach((doc) => {
-        msgs.push({ ...doc.data(), id: doc.id });
+        const data = doc.data();
+        if ((data.targetRole || 'Admin') === targetRole) {
+          msgs.push({ ...data, id: doc.id });
+        }
       });
       msgs.sort((a, b) => a.timestamp - b.timestamp);
       setMessages(msgs);
     });
+    
+    // Mark notifications as read when opening inbox
+    markConversationNotificationsRead(memberId);
 
     return () => unsubscribe();
-  }, [memberId]);
+  }, [memberId, targetRole]);
 
   React.useEffect(() => {
     if (messagesEndRef.current) {
@@ -83,7 +90,7 @@ export default function StudentInbox() {
     setNewMessage('');
     
     try {
-      await sendMessage(memberId, text, false);
+      await sendMessage(memberId, text, false, targetRole);
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -93,8 +100,23 @@ export default function StudentInbox() {
     <div className="space-y-6 flex flex-col h-[calc(100vh-100px)]">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Chat with Admin</h2>
-          <p className="text-sm text-slate-500">Send messages to the library administrators.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Support Chat</h2>
+          <p className="text-sm text-slate-500">Send messages to the library administrators or librarians.</p>
+        </div>
+        
+        <div className="flex p-1 bg-slate-100 rounded-lg">
+          <button 
+            onClick={() => setTargetRole('Admin')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${targetRole === 'Admin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          >
+            <Shield className="h-4 w-4" /> Admin
+          </button>
+          <button 
+            onClick={() => setTargetRole('Librarian')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${targetRole === 'Librarian' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+          >
+            <BookOpen className="h-4 w-4" /> Librarian
+          </button>
         </div>
       </div>
       
@@ -102,7 +124,7 @@ export default function StudentInbox() {
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
           <div className="space-y-6 flex flex-col">
             <div className="text-center">
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">Conversation History</span>
+              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">Conversation History with {targetRole}</span>
             </div>
             
             {messages.length === 0 ? (
@@ -115,7 +137,7 @@ export default function StudentInbox() {
                 className={`flex max-w-[80%] ${!msg.isSender ? 'ml-auto justify-end' : ''}`}
               >
                 {msg.isSender && (
-                  <Avatar fallback="A" size="sm" className="h-8 w-8 mr-2 shrink-0 mt-auto mb-1 bg-slate-200" />
+                  <Avatar fallback={targetRole[0]} size="sm" className="h-8 w-8 mr-2 shrink-0 mt-auto mb-1 bg-slate-200" />
                 )}
                 <div className={`flex flex-col ${!msg.isSender ? 'items-end' : 'items-start'}`}>
                   <div 
@@ -125,7 +147,33 @@ export default function StudentInbox() {
                         : 'bg-white border border-slate-100 text-slate-700 rounded-bl-sm shadow-sm'
                     }`}
                   >
-                    {msg.text}
+                    <div>{msg.text}</div>
+                    {msg.metadata && msg.metadata.type === 'reservation' && (
+                      <div className="mt-2">
+                        {msg.metadata.status === 'permitted' ? (
+                          <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'} inline-block`}>
+                            Permitted & Checked Out
+                          </div>
+                        ) : (
+                          <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'} inline-block`}>
+                            Pending Approval
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {msg.metadata && msg.metadata.type === 'renew' && (
+                      <div className="mt-2">
+                        {msg.metadata.status === 'permitted' ? (
+                          <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'} inline-block`}>
+                            Renew Permitted
+                          </div>
+                        ) : (
+                          <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'} inline-block`}>
+                            Pending Approval
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <span className="text-[10px] text-slate-400 mt-1 px-1">{msg.time}</span>
                 </div>
@@ -143,7 +191,7 @@ export default function StudentInbox() {
           >
             <input 
               type="text" 
-              placeholder="Type your message..." 
+              placeholder={`Message ${targetRole}...`} 
               className="flex-1 bg-transparent border-none focus:outline-none text-sm px-4 text-slate-700"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}

@@ -18,6 +18,8 @@ import {
   Bookmark
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
+import { collection, query, where, onSnapshot } from "firebase/firestore"
+import { db } from "@/src/lib/firebase"
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -41,9 +43,29 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { role, logout } = useAuth();
   const location = useLocation();
+  const [unreadInboxCount, setUnreadInboxCount] = React.useState(0);
 
-  
-    const filteredNavItems = React.useMemo(() => {
+  React.useEffect(() => {
+    if (!role) return;
+    const memberId = role.toLowerCase();
+    
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', memberId),
+      where('unread', '==', true),
+      where('type', '==', 'message')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadInboxCount(snapshot.docs.length);
+    }, (error) => {
+      console.error("Error listening to unread inbox count:", error);
+    });
+
+    return () => unsubscribe();
+  }, [role]);
+
+  const filteredNavItems = React.useMemo(() => {
       let items = [...navItems];
       if (role === 'Admin') {
         items.push({ name: 'Credentials', path: '/credentials', icon: Key });
@@ -94,7 +116,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   )}
                 >
                   <item.icon className={cn("h-5 w-5", isActive ? "text-[var(--color-primary)]" : "text-slate-400")} />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
+                  {item.name === 'Inbox' && unreadInboxCount > 0 && (
+                    <span className="inline-flex items-center justify-center rounded-full bg-[#F4772D] px-2 py-0.5 text-xs font-medium text-white">
+                      {unreadInboxCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}

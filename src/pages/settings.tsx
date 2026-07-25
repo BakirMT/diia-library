@@ -2,7 +2,7 @@ import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
-import { User, Building, Users, Bell, DollarSign, Save, Upload, Shield, Mail, Palette, List, Plus, Trash2, Edit2, X, Check } from "lucide-react"
+import { User, Building, Users, Bell, Save, Upload, Shield, Mail, Palette, List, Plus, Trash2, Edit2, X, Check, DollarSign } from "lucide-react"
 import { Avatar } from "@/src/components/ui/avatar"
 
 import { AddStaffModal, StaffMember } from "@/src/components/settings/add-staff-modal"
@@ -18,6 +18,17 @@ export default function Settings() {
   const [activeTab, setActiveTab] = React.useState('profile');
   const [isSaving, setIsSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
+  
+  // Form states for settings
+  const [currency, setCurrency] = React.useState(settings.currency);
+  const [gracePeriod, setGracePeriod] = React.useState(settings.gracePeriod.toString());
+  const [fineRate, setFineRate] = React.useState(settings.fineRate.toString());
+  const [maxFine, setMaxFine] = React.useState(settings.maxFine.toString());
+  const [theme, setTheme] = React.useState(settings.theme || 'system');
+  const [categories, setCategories] = React.useState<string[]>(settings.categories || []);
+  const [newCategory, setNewCategory] = React.useState('');
+  const [editingCategory, setEditingCategory] = React.useState<string | null>(null);
+  const [editCategoryValue, setEditCategoryValue] = React.useState('');
   
   const [isAddStaffModalOpen, setIsAddStaffModalOpen] = React.useState(false);
   const [editingStaff, setEditingStaff] = React.useState<StaffMember | null>(null);
@@ -44,18 +55,6 @@ export default function Settings() {
   const handleMessageStaff = (email: string) => {
     window.location.href = 'mailto:' + email;
   };
-
-
-  // Form states for settings
-  const [currency, setCurrency] = React.useState(settings.currency);
-  const [gracePeriod, setGracePeriod] = React.useState(settings.gracePeriod.toString());
-  const [fineRate, setFineRate] = React.useState(settings.fineRate.toString());
-  const [maxFine, setMaxFine] = React.useState(settings.maxFine.toString());
-  const [theme, setTheme] = React.useState(settings.theme || 'system');
-  const [categories, setCategories] = React.useState<string[]>(settings.categories || []);
-  const [newCategory, setNewCategory] = React.useState('');
-  const [editingCategory, setEditingCategory] = React.useState<string | null>(null);
-  const [editCategoryValue, setEditCategoryValue] = React.useState('');
   
   const { user, role } = useAuth();
   const [firstName, setFirstName] = React.useState('');
@@ -135,11 +134,13 @@ export default function Settings() {
             { id: 'profile', label: 'Profile Settings', icon: User },
             { id: 'appearance', label: 'Appearance', icon: Palette },
             { id: 'library', label: 'Library Information', icon: Building },
-            { id: 'staff', label: 'Staff & Roles', icon: Shield },
+            ...(role === 'Admin' ? [{ id: 'staff', label: 'Staff & Roles', icon: Shield }] : []),
             { id: 'categories', label: 'Categories & Genres', icon: List },
             { id: 'notifications', label: 'Notifications', icon: Bell },
-            { id: 'fines', label: 'Fines & Fees', icon: DollarSign },
-            { id: 'templates', label: 'Email Templates', icon: Mail },
+            ...(role === 'Admin' ? [
+              { id: 'fines', label: 'Fines & Fees', icon: DollarSign },
+              { id: 'templates', label: 'Email Templates', icon: Mail },
+            ] : []),
           ].map((tab) => (
             <button
               key={tab.id}
@@ -310,85 +311,32 @@ export default function Settings() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Library Name</label>
-                    <Input defaultValue="Central City Public Library" />
+                    <Input defaultValue="Central City Public Library" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Address</label>
-                    <Input defaultValue="123 Library Way, Knowledge City, ST 12345" />
+                    <Input defaultValue="123 Library Way, Knowledge City, ST 12345" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Contact Email</label>
-                    <Input type="email" defaultValue="hello@centralcitylib.org" />
+                    <Input type="email" defaultValue="hello@centralcitylib.org" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Contact Phone</label>
-                    <Input type="tel" defaultValue="(555) 123-4567" />
+                    <Input type="tel" defaultValue="(555) 123-4567" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Website</label>
-                    <Input type="url" defaultValue="https://centralcitylib.org" />
+                    <Input type="url" defaultValue="https://centralcitylib.org" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                 </div>
-                <div className="flex justify-end pt-4 border-t border-slate-100">
-                  <Button onClick={handleSave} disabled={isSaving || saved} className={saved ? "bg-green-600 hover:bg-green-700" : ""}>
-                    {isSaving ? 'Saving...' : saved ? 'Saved!' : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {activeTab === 'staff' && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Staff & Roles</CardTitle>
-                  <CardDescription>Manage staff accounts and their access permissions.</CardDescription>
-                </div>
-                <Button size="sm" onClick={() => { setEditingStaff(null); setIsAddStaffModalOpen(true); }}>Add Staff</Button>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto rounded-xl ring-1 ring-slate-100">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 border-b border-slate-100">
-                      <tr>
-                        <th className="px-4 py-3">Name</th>
-                        <th className="px-4 py-3">Username</th>
-                        <th className="px-4 py-3">Role</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {staffList.map(staff => (
-                        <tr key={staff.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3 font-medium text-slate-900">{staff.name}</td>
-                          <td className="px-4 py-3 text-slate-500">{staff.username}</td>
-                          <td className="px-4 py-3 text-slate-500">{staff.role}</td>
-                          <td className="px-4 py-3">
-                            <span className={staff.status === 'Active' ? "text-green-600 bg-green-50 px-2 py-1 rounded-full text-[10px] font-bold uppercase" : "text-slate-600 bg-slate-100 px-2 py-1 rounded-full text-[10px] font-bold uppercase"}>
-                              {staff.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="text-slate-500 h-8 w-8 hover:text-[var(--color-primary)] hover:bg-orange-50" onClick={() => handleMessageStaff(staff.email)}>
-                                <Mail className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-slate-500 h-8 hover:text-slate-900" onClick={() => {
-                                setEditingStaff(staff);
-                                setIsAddStaffModalOpen(true);
-                              }}>Edit</Button>
-                              <Button variant="ghost" size="icon" className="text-slate-500 h-8 w-8 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeleteStaff(staff.id)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                {role === 'Admin' && (
+                  <div className="flex justify-end pt-4 border-t border-slate-100">
+                    <Button onClick={handleSave} disabled={isSaving || saved} className={saved ? "bg-green-600 hover:bg-green-700" : ""}>
+                      {isSaving ? 'Saving...' : saved ? 'Saved!' : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -588,7 +536,62 @@ export default function Settings() {
             </Card>
           )}
 
-          {activeTab === 'fines' && (
+          {activeTab === 'staff' && role === 'Admin' && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Staff & Roles</CardTitle>
+                  <CardDescription>Manage staff accounts and their access permissions.</CardDescription>
+                </div>
+                <Button size="sm" onClick={() => { setEditingStaff(null); setIsAddStaffModalOpen(true); }}>Add Staff</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto rounded-xl ring-1 ring-slate-100">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 border-b border-slate-100">
+                      <tr>
+                        <th className="px-4 py-3">Name</th>
+                        <th className="px-4 py-3">Username</th>
+                        <th className="px-4 py-3">Role</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {staffList.map(staff => (
+                        <tr key={staff.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 font-medium text-slate-900">{staff.name}</td>
+                          <td className="px-4 py-3 text-slate-500">{staff.username}</td>
+                          <td className="px-4 py-3 text-slate-500">{staff.role}</td>
+                          <td className="px-4 py-3">
+                            <span className={staff.status === 'Active' ? "text-green-600 bg-green-50 px-2 py-1 rounded-full text-[10px] font-bold uppercase" : "text-slate-600 bg-slate-100 px-2 py-1 rounded-full text-[10px] font-bold uppercase"}>
+                              {staff.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="text-slate-500 h-8 w-8 hover:text-[var(--color-primary)] hover:bg-orange-50" onClick={() => handleMessageStaff(staff.email)}>
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="text-slate-500 h-8 hover:text-slate-900" onClick={() => {
+                                setEditingStaff(staff);
+                                setIsAddStaffModalOpen(true);
+                              }}>Edit</Button>
+                              <Button variant="ghost" size="icon" className="text-slate-500 h-8 w-8 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeleteStaff(staff.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'fines' && role === 'Admin' && (
             <Card>
               <CardHeader>
                 <CardTitle>Fines & Fees Configuration</CardTitle>
@@ -654,7 +657,7 @@ export default function Settings() {
             </Card>
           )}
 
-          {activeTab === 'templates' && (
+          {activeTab === 'templates' && role === 'Admin' && (
             <Card>
               <CardHeader>
                 <CardTitle>Email Templates</CardTitle>

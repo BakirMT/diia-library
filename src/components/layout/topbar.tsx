@@ -70,7 +70,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     const resolveUser = async () => {
       if (!user) return;
       if (role !== 'Member') {
-        setMemberId('admin');
+        setMemberId(role?.toLowerCase() || 'admin');
         return;
       }
       try {

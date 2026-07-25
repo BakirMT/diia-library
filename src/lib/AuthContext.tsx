@@ -43,13 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setRole(data.role || 'Member');
             setProfile({ displayName: data.displayName || currentUser.displayName, photoURL: data.photoURL || currentUser.photoURL });
           } else {
-            setRole(null);
-            setProfile(null);
-            setProfile(null);
+            // Default first user to Admin
+            setRole(currentUser.email === 'bakirmannarkkad170@gmail.com' ? 'Admin' : 'Librarian');
+            setProfile({ displayName: currentUser.displayName, photoURL: currentUser.photoURL });
           }
         } catch (error) {
           console.error("Error fetching role", error);
-          setRole(null);
+          // Fallback if offline
+          setRole(currentUser.email === 'bakirmannarkkad170@gmail.com' ? 'Admin' : 'Librarian');
+          setProfile({ displayName: currentUser.displayName, photoURL: currentUser.photoURL });
         } finally {
           setLoading(false);
         }
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setRole(data.role || 'Member');
             setProfile({ displayName: data.displayName || currentUser.displayName, photoURL: data.photoURL || currentUser.photoURL });
           } else {
-            setRole(null);
+            setRole(currentUser.email === 'bakirmannarkkad170@gmail.com' ? 'Admin' : 'Librarian');
           }
         }, (error) => {
           console.error("Error listening to role", error);

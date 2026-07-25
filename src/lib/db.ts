@@ -97,12 +97,12 @@ export const fetchActivities = async () => {
   return activities;
 };
 
-export const fetchMessages = async (memberId: string) => {
+export const fetchMessages = async (memberId: string, targetRole: 'Admin' | 'Librarian' = 'Admin') => {
   const querySnapshot = await getDocs(collection(db, "messages"));
   const messages: any[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    if (data.memberId === memberId) {
+    if (data.memberId === memberId && (data.targetRole || 'Admin') === targetRole) {
       messages.push({ id: doc.id, ...data });
     }
   });
@@ -111,14 +111,18 @@ export const fetchMessages = async (memberId: string) => {
   return messages;
 };
 
-export const sendMessage = async (memberId: string, text: string, isSender: boolean) => {
-  const newMsg = {
+export const sendMessage = async (memberId: string, text: string, isSender: boolean, targetRole: 'Admin' | 'Librarian' = 'Admin', metadata?: any) => {
+  const newMsg: any = {
     memberId,
     text,
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     timestamp: Date.now(),
     isSender,
+    targetRole,
   };
+  if (metadata) {
+    newMsg.metadata = metadata;
+  }
   const docRef = await addDoc(collection(db, "messages"), newMsg);
 
   try {
@@ -134,34 +138,36 @@ export const sendMessage = async (memberId: string, text: string, isSender: bool
         console.error("Error fetching member for notification", e);
       }
       await addNotification({
-        userId: 'admin',
+        userId: targetRole.toLowerCase(),
         title: 'New Message',
         message: `New message from ${memberName}: "${text}"`,
         type: 'message'
       });
     } else {
-      // Sent by admin -> notify the specific member
+      // Sent by admin/librarian -> notify the specific member
       await addNotification({
         userId: memberId,
-        title: 'New Message from Admin',
-        message: `Admin: "${text}"`,
+        title: `New Message from ${targetRole}`,
+        message: `${targetRole}: "${text}"`,
         type: 'message'
       });
     }
   } catch (err) {
     console.error("Error sending message notification:", err);
   }
-
   return { id: docRef.id, ...newMsg };
 };
 
-export const fetchConversations = async () => {
+export const fetchConversations = async (targetRole: 'Admin' | 'Librarian' = 'Admin') => {
   const members = await fetchMembers();
   // We can fetch all messages to get the last message for each member, or just return members as conversations.
   const querySnapshot = await getDocs(collection(db, "messages"));
   const messages: any[] = [];
   querySnapshot.forEach((doc) => {
-    messages.push({ ...doc.data(), id: doc.id });
+    const data = doc.data();
+    if ((data.targetRole || 'Admin') === targetRole) {
+      messages.push({ ...data, id: doc.id });
+    }
   });
 
   // Only allow members with Active status and a password to use chat
@@ -217,6 +223,63 @@ export const addReservation = async (reservation: any) => {
     return { ...reservation, id: docRef.id };
   } catch (error) {
     console.error("Error adding reservation:", error);
+    throw error;
+  }
+}
+
+export const permitReservation = async (reservationId: string, bookId: string, memberId: string, messageId: string) => {
+  try {
+    // 1. Get the book
+    const bookSnap = await getDoc(doc(db, "books", bookId));
+    if (!bookSnap.exists()) throw new Error("Book not found");
+    const book = bookSnap.data();
+
+    // 2. Add checkout activity
+    const today = new Date();
+    
+    // Fetch member to get their name
+    const memberSnap = await getDoc(doc(db, "members", memberId));
+    const memberName = memberSnap.exists() ? memberSnap.data().name : 'Unknown';
+
+    const checkoutRecord = {
+      id: `ACT-${Date.now()}`,
+      memberId,
+      memberName,
+      bookTitle: book.title,
+      action: 'Check Out',
+      date: today.toISOString(),
+      status: 'Completed'
+    };
+    await addDoc(collection(db, "activities"), checkoutRecord);
+
+    // 3. Update reservation status to Completed
+    try {
+      await updateDoc(doc(db, "reservations", reservationId), { status: 'Completed' });
+    } catch (err: any) {
+      console.warn("Direct update failed, querying for reservation ID", err);
+      const q = query(collection(db, "reservations"), where("id", "==", reservationId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        await updateDoc(doc(db, "reservations", snap.docs[0].id), { status: 'Completed' });
+      } else {
+        throw new Error("Reservation document not found by ID or query.");
+      }
+    }
+
+    // 4. Update the message metadata to show it was permitted
+    const msgSnap = await getDoc(doc(db, "messages", messageId));
+    if (msgSnap.exists()) {
+      const msgData = msgSnap.data();
+      if (msgData.metadata) {
+        await updateDoc(doc(db, "messages", messageId), {
+          metadata: { ...msgData.metadata, status: 'permitted' }
+        });
+      }
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error permitting reservation:", error);
     throw error;
   }
 }
@@ -323,6 +386,80 @@ export const deleteLibrarian = async (id: string) => {
 
 export const updateActivity = async (id: string, updates: any) => {
   await updateDoc(doc(db, "activities", id), updates);
+};
+
+export const permitRenew = async (bookTitle: string, memberId: string, messageId: string) => {
+  try {
+    // 1. Find the pending Renew Request
+    const q = query(collection(db, "activities"), where("memberId", "==", memberId), where("bookTitle", "==", bookTitle), where("action", "==", "Renew Request"), where("status", "==", "Pending"));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      await updateDoc(doc(db, "activities", snap.docs[0].id), { status: 'Completed' });
+    }
+
+    // 2. Add Renew activity
+    const memberSnap = await getDoc(doc(db, "members", memberId));
+    const memberName = memberSnap.exists() ? memberSnap.data().name : 'Unknown';
+    
+    await addDoc(collection(db, "activities"), {
+      id: `ACT-${Date.now()}`,
+      memberId,
+      memberName,
+      bookTitle,
+      action: 'Renew',
+      date: new Date().toISOString(),
+      status: 'Completed'
+    });
+
+    // 3. Update the message metadata to show it was permitted
+    const msgSnap = await getDoc(doc(db, "messages", messageId));
+    if (msgSnap.exists()) {
+      const msgData = msgSnap.data();
+      if (msgData.metadata) {
+        await updateDoc(doc(db, "messages", messageId), {
+          metadata: { ...msgData.metadata, status: 'permitted' }
+        });
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error("Error permitting renew:", error);
+    throw error;
+  }
+}
+
+export const markConversationNotificationsRead = async (userId: string, memberName?: string) => {
+  try {
+    const q = query(collection(db, 'notifications'), where('userId', '==', userId), where('unread', '==', true));
+    const snap = await getDocs(q);
+    
+    // Check if there are unread notifications
+    if (snap.empty) return;
+    
+    const batch = writeBatch(db);
+    let count = 0;
+    
+    snap.forEach(doc => {
+      const data = doc.data();
+      let match = false;
+      if (memberName && data.message && data.message.includes(memberName)) {
+        match = true;
+      }
+      if (!memberName && (data.type === 'message' || data.type === 'reservation' || data.type === 'renew')) {
+        match = true;
+      }
+      if (match) {
+        batch.update(doc.ref, { unread: false });
+        count++;
+      }
+    });
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+  } catch (err) {
+    console.error("Error marking notifications as read:", err);
+  }
 };
 
 export const deleteActivity = async (id: string) => {

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/src/components/ui/card"
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
 import { Search, Filter, BookOpen } from "lucide-react"
-import { fetchBooks, addReservation, updateBook, addNotification } from "@/src/lib/db"
+import { fetchBooks, addReservation, updateBook, addNotification, sendMessage } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
 import { doc, getDoc, collection, getDocs } from "firebase/firestore"
@@ -61,7 +61,13 @@ export default function StudentCatalog() {
         position: 1
       };
       
-      await addReservation(reservation);
+      const addedRes = await addReservation(reservation);
+
+      const reservationMessage = `I would like to reserve the book "${book.title}".`;
+      const metadata = { type: 'reservation', bookId: book.id, reservationId: addedRes.id, bookTitle: book.title };
+      
+      await sendMessage(memberId, reservationMessage, false, 'Admin', metadata);
+      await sendMessage(memberId, reservationMessage, false, 'Librarian', metadata);
 
       await addNotification({
         userId: 'admin',

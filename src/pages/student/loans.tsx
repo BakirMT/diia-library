@@ -6,6 +6,7 @@ import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
 import { collection, getDocs, doc, getDoc, addDoc } from "firebase/firestore"
 import { Button } from "@/src/components/ui/button"
+import { sendMessage } from "@/src/lib/db"
 
 export default function StudentLoans() {
   const { user } = useAuth();
@@ -254,8 +255,8 @@ export default function StudentLoans() {
         title: 'Renew Requested',
         message: `You have requested to renew "${loan.title}". This is pending librarian approval.`,
         type: 'renew',
-        date: new Date().toISOString(),
-        read: false
+        timestamp: Date.now(),
+        unread: true
       });
 
       // Add Notification for Admin
@@ -264,9 +265,15 @@ export default function StudentLoans() {
         title: 'Renew Request',
         message: `${memberInfo.name} has requested to renew "${loan.title}".`,
         type: 'renew',
-        date: new Date().toISOString(),
-        read: false
+        timestamp: Date.now(),
+        unread: true
       });
+
+      const renewMessage = `I would like to renew the book "${loan.title}".`;
+      const metadata = { type: 'renew', bookTitle: loan.title, memberId: memberInfo.id };
+      
+      await sendMessage(memberInfo.id, renewMessage, false, 'Admin', metadata);
+      await sendMessage(memberInfo.id, renewMessage, false, 'Librarian', metadata);
 
       alert(`Successfully requested renewal! Please wait for admin approval.`);
       

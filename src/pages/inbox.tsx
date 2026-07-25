@@ -5,11 +5,14 @@ import { Button } from "@/src/components/ui/button"
 import { Avatar } from "@/src/components/ui/avatar"
 import { Search, Send, Paperclip, MoreVertical, Phone, Video, Info, ArrowLeft } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
-import { fetchConversations, fetchMessages, sendMessage } from "@/src/lib/db"
-
+import { fetchConversations, fetchMessages, sendMessage, permitReservation, permitRenew, addNotification, markConversationNotificationsRead } from "@/src/lib/db"
+import { useAuth } from "@/src/lib/AuthContext"
 
 
 export default function Inbox() {
+  const { role } = useAuth();
+  const currentRole = (role === 'Librarian' ? 'Librarian' : 'Admin') as 'Admin' | 'Librarian';
+  
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = React.useState<any[]>([]);
   const [activeConversation, setActiveConversation] = React.useState<any>(null);
@@ -21,7 +24,7 @@ export default function Inbox() {
   const [searchQuery, setSearchQuery] = React.useState('');
 
   React.useEffect(() => {
-    fetchConversations().then(convos => {
+    fetchConversations(currentRole).then(convos => {
       setConversations(convos);
       const memberId = searchParams.get('memberId');
       
@@ -40,18 +43,21 @@ export default function Inbox() {
         setActiveConversation(active);
       }
     });
-  }, []);
+  }, [currentRole]);
 
   React.useEffect(() => {
     if (activeConversation && !messagesByConv[activeConversation.id]) {
-      fetchMessages(activeConversation.id).then(msgs => {
+      fetchMessages(activeConversation.id, currentRole).then(msgs => {
         setMessagesByConv(prev => ({
           ...prev,
           [activeConversation.id]: msgs
         }));
       });
     }
-  }, [activeConversation]);
+    if (activeConversation) {
+      markConversationNotificationsRead(currentRole.toLowerCase(), activeConversation.name);
+    }
+  }, [activeConversation, currentRole]);
 
   const currentMessages = activeConversation ? (messagesByConv[activeConversation.id] || []) : [];
 
@@ -82,6 +88,66 @@ export default function Inbox() {
     });
   };
 
+  const handlePermitReservation = async (msg: any) => {
+    try {
+      if (!msg.metadata || !msg.metadata.reservationId) return;
+      await permitReservation(msg.metadata.reservationId, msg.metadata.bookId, activeConversation.id, msg.id);
+      
+      // Update local message state
+      setMessagesByConv(prev => ({
+        ...prev,
+        [activeConversation.id]: (prev[activeConversation.id] || []).map(m => 
+          m.id === msg.id 
+            ? { ...m, metadata: { ...m.metadata, status: 'permitted' } } 
+            : m
+        )
+      }));
+
+      // Notify the member
+      await addNotification({
+        userId: activeConversation.id,
+        title: 'Reservation Permitted',
+        message: `Your reservation for "${msg.metadata.bookTitle}" has been permitted and checked out to you.`,
+        type: 'reservation'
+      });
+
+      alert("Reservation permitted and book checked out successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to permit reservation.");
+    }
+  };
+
+  const handlePermitRenew = async (msg: any) => {
+    try {
+      if (!msg.metadata || !msg.metadata.bookTitle) return;
+      await permitRenew(msg.metadata.bookTitle, activeConversation.id, msg.id);
+      
+      // Update local message state
+      setMessagesByConv(prev => ({
+        ...prev,
+        [activeConversation.id]: (prev[activeConversation.id] || []).map(m => 
+          m.id === msg.id 
+            ? { ...m, metadata: { ...m.metadata, status: 'permitted' } } 
+            : m
+        )
+      }));
+
+      // Notify the member
+      await addNotification({
+        userId: activeConversation.id,
+        title: 'Renew Permitted',
+        message: `Your renew request for "${msg.metadata.bookTitle}" has been approved.`,
+        type: 'renew'
+      });
+
+      alert("Renew permitted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to permit renew.");
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeConversation) return;
@@ -90,7 +156,7 @@ export default function Inbox() {
     setNewMessage('');
     
     try {
-      const newMsg = await sendMessage(activeConversation.id, text, true);
+      const newMsg = await sendMessage(activeConversation.id, text, true, currentRole);
       addMessageToUI(newMsg);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -104,7 +170,7 @@ export default function Inbox() {
         fileInputRef.current.value = '';
       }
       try {
-        const newMsg = await sendMessage(activeConversation.id, `📎 Attached file: ${file.name}`, true);
+        const newMsg = await sendMessage(activeConversation.id, `📎 Attached file: ${file.name}`, true, currentRole);
         addMessageToUI(newMsg);
       } catch (error) {
         console.error("Error sending file:", error);
@@ -239,7 +305,41 @@ export default function Inbox() {
                             : 'bg-white border border-slate-100 text-slate-700 rounded-bl-sm shadow-sm'
                         }`}
                       >
-                        {msg.text}
+                        <div>{msg.text}</div>
+                        {msg.metadata && msg.metadata.type === 'reservation' && (
+                          <div className="mt-3">
+                            {msg.metadata.status === 'permitted' ? (
+                              <div className={`text-xs font-medium px-3 py-1 rounded bg-green-100 text-green-700 inline-block`}>
+                                Permitted & Checked Out
+                              </div>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handlePermitReservation(msg)}
+                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-orange-600"}
+                              >
+                                Permit Reservation
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                        {msg.metadata && msg.metadata.type === 'renew' && (
+                          <div className="mt-3">
+                            {msg.metadata.status === 'permitted' ? (
+                              <div className={`text-xs font-medium px-3 py-1 rounded bg-green-100 text-green-700 inline-block`}>
+                                Renew Permitted
+                              </div>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handlePermitRenew(msg)}
+                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-orange-600"}
+                              >
+                                Permit Renew
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <span className="text-[10px] text-slate-400 mt-1 px-1">{msg.time}</span>
                     </div>

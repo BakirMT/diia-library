@@ -13,6 +13,8 @@ import {
   MessageSquare
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs } from "firebase/firestore"
+import { db } from "@/src/lib/firebase"
 
 const navItems = [
   { name: 'My Dashboard', path: '/student', icon: BookOpen },
@@ -29,8 +31,53 @@ interface SidebarProps {
 }
 
 export function StudentSidebar({ isOpen, onClose }: SidebarProps) {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
+  const [unreadChatCount, setUnreadChatCount] = React.useState(0);
+  const [memberId, setMemberId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const resolveUser = async () => {
+      if (!user) return;
+      try {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const username = userSnap.data().username;
+          if (username) {
+            const membersRef = collection(db, 'members');
+            const q = query(membersRef, where('username', '==', username));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+              setMemberId(querySnapshot.docs[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error resolving member ID for student sidebar", err);
+      }
+    };
+    resolveUser();
+  }, [user]);
+
+  React.useEffect(() => {
+    if (!memberId) return;
+    
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', memberId),
+      where('unread', '==', true),
+      where('type', '==', 'message')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadChatCount(snapshot.docs.length);
+    }, (error) => {
+      console.error("Error listening to unread chat count:", error);
+    });
+
+    return () => unsubscribe();
+  }, [memberId]);
 
   return (
     <>
@@ -75,7 +122,12 @@ export function StudentSidebar({ isOpen, onClose }: SidebarProps) {
                   )}
                 >
                   <item.icon className={cn("h-5 w-5", isActive ? "text-[var(--color-primary)]" : "text-slate-400")} />
-                  {item.name}
+                  <span className="flex-1">{item.name}</span>
+                  {item.name === 'Chat' && unreadChatCount > 0 && (
+                    <span className="inline-flex items-center justify-center rounded-full bg-[#F4772D] px-2 py-0.5 text-xs font-medium text-white">
+                      {unreadChatCount}
+                    </span>
+                  )}
                 </Link>
               )
             })}
