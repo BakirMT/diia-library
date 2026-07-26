@@ -227,7 +227,7 @@ export const addReservation = async (reservation: any) => {
   }
 }
 
-export const permitReservation = async (reservationId: string, bookId: string, memberId: string, messageId: string) => {
+export const permitReservation = async (reservationId: string, bookId: string, memberId: string, messageId: string, permittedBy: string) => {
   try {
     // 1. Get the book
     const bookSnap = await getDoc(doc(db, "books", bookId));
@@ -248,7 +248,8 @@ export const permitReservation = async (reservationId: string, bookId: string, m
       bookTitle: book.title,
       action: 'Check Out',
       date: today.toISOString(),
-      status: 'Completed'
+      status: 'Completed',
+      permittedBy
     };
     await addDoc(collection(db, "activities"), checkoutRecord);
 
@@ -266,16 +267,28 @@ export const permitReservation = async (reservationId: string, bookId: string, m
       }
     }
 
-    // 4. Update the message metadata to show it was permitted
-    const msgSnap = await getDoc(doc(db, "messages", messageId));
-    if (msgSnap.exists()) {
-      const msgData = msgSnap.data();
-      if (msgData.metadata) {
-        await updateDoc(doc(db, "messages", messageId), {
-          metadata: { ...msgData.metadata, status: 'permitted' }
+    // 4. Update book status to Checked Out if copies reached 0
+    try {
+      await updateDoc(doc(db, "books", bookId), {
+        status: book.copiesAvailable === 0 ? 'Checked Out' : book.status
+      });
+    } catch (e) {
+      console.error("Failed to update book status", e);
+    }
+
+    // 5. Update the message metadata to show it was permitted for all related messages
+    const qMsgs = query(collection(db, "messages"), where("memberId", "==", memberId));
+    const msgsSnap = await getDocs(qMsgs);
+    const batchMsgs = writeBatch(db);
+    msgsSnap.forEach(docSnap => {
+      const msgData = docSnap.data();
+      if (msgData.metadata && msgData.metadata.type === 'reservation' && msgData.metadata.reservationId === reservationId) {
+        batchMsgs.update(docSnap.ref, {
+          metadata: { ...msgData.metadata, status: 'permitted', permittedBy }
         });
       }
-    }
+    });
+    await batchMsgs.commit();
 
     return true;
   } catch (error) {
@@ -388,7 +401,7 @@ export const updateActivity = async (id: string, updates: any) => {
   await updateDoc(doc(db, "activities", id), updates);
 };
 
-export const permitRenew = async (bookTitle: string, memberId: string, messageId: string) => {
+export const permitRenew = async (bookTitle: string, memberId: string, messageId: string, permittedBy: string) => {
   try {
     // 1. Find the pending Renew Request
     const q = query(collection(db, "activities"), where("memberId", "==", memberId), where("bookTitle", "==", bookTitle), where("action", "==", "Renew Request"), where("status", "==", "Pending"));
@@ -408,19 +421,23 @@ export const permitRenew = async (bookTitle: string, memberId: string, messageId
       bookTitle,
       action: 'Renew',
       date: new Date().toISOString(),
-      status: 'Completed'
+      status: 'Completed',
+      permittedBy
     });
 
-    // 3. Update the message metadata to show it was permitted
-    const msgSnap = await getDoc(doc(db, "messages", messageId));
-    if (msgSnap.exists()) {
-      const msgData = msgSnap.data();
-      if (msgData.metadata) {
-        await updateDoc(doc(db, "messages", messageId), {
-          metadata: { ...msgData.metadata, status: 'permitted' }
+    // 3. Update the message metadata to show it was permitted for all related messages
+    const qMsgs = query(collection(db, "messages"), where("memberId", "==", memberId));
+    const msgsSnap = await getDocs(qMsgs);
+    const batchMsgs = writeBatch(db);
+    msgsSnap.forEach(docSnap => {
+      const msgData = docSnap.data();
+      if (msgData.metadata && msgData.metadata.type === 'renew' && msgData.metadata.bookTitle === bookTitle) {
+        batchMsgs.update(docSnap.ref, {
+          metadata: { ...msgData.metadata, status: 'permitted', permittedBy }
         });
       }
-    }
+    });
+    await batchMsgs.commit();
     return true;
   } catch (error) {
     console.error("Error permitting renew:", error);

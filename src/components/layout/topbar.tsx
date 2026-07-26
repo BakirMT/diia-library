@@ -4,10 +4,10 @@ import { Search, Bell, Menu, BookOpen, X, User, Activity, LogOut, ChevronDown } 
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
 import { Avatar } from "@/src/components/ui/avatar"
-import { MOCK_BOOKS, MOCK_MEMBERS } from "@/src/lib/mock-data"
 import { useNavigate, Link } from "react-router-dom"
 import { db } from "@/src/lib/firebase"
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs, updateDoc, writeBatch } from "firebase/firestore"
+import { fetchBooks, fetchMembers } from "@/src/lib/db"
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -26,25 +26,33 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const notificationsRef = React.useRef<HTMLDivElement>(null);
 
+  const [allBooks, setAllBooks] = React.useState<any[]>([]);
+  const [allMembers, setAllMembers] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetchBooks().then(setAllBooks);
+    fetchMembers().then(setAllMembers);
+  }, []);
+
   const filteredBooks = React.useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const query = String(searchQuery || '').toLowerCase();
-    return MOCK_BOOKS.filter(book => 
-      String(book.title || '').toLowerCase().includes(query) || 
-      String(book.author || '').toLowerCase().includes(query) ||
-      String(book.isbn || '').includes(query)
+    const q = String(searchQuery || '').toLowerCase();
+    return allBooks.filter(book => 
+      String(book.title || '').toLowerCase().includes(q) || 
+      String(book.author || '').toLowerCase().includes(q) ||
+      String(book.isbn || '').includes(q)
     ).slice(0, 3);
-  }, [searchQuery]);
+  }, [searchQuery, allBooks]);
 
   const filteredMembers = React.useMemo(() => {
     if (!searchQuery.trim()) return [];
-    const query = String(searchQuery || '').toLowerCase();
-    return MOCK_MEMBERS.filter(member => 
-      String(member.name || '').toLowerCase().includes(query) || 
-      String(member.email || '').toLowerCase().includes(query) ||
-      String(member.id || '').toLowerCase().includes(query)
+    const q = String(searchQuery || '').toLowerCase();
+    return allMembers.filter(member => 
+      String(member.name || '').toLowerCase().includes(q) || 
+      String(member.email || '').toLowerCase().includes(q) ||
+      String(member.id || '').toLowerCase().includes(q)
     ).slice(0, 3);
-  }, [searchQuery]);
+  }, [searchQuery, allMembers]);
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -256,7 +264,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#F4772D] text-[10px] font-bold text-white ring-2 ring-white">
+                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#24B1B1] text-[10px] font-bold text-white ring-2 ring-white">
                   {unreadCount}
                 </span>
               )}
@@ -285,7 +293,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                       <div 
                         key={notification.id} 
                         onClick={() => handleMarkOneRead(notification.id)}
-                        className={`px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${notification.unread ? 'bg-orange-50/30' : ''}`}
+                        className={`px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer ${notification.unread ? 'bg-teal-50/30' : ''}`}
                       >
                         <div className="flex justify-between items-start gap-2">
                           <h4 className={`text-sm ${notification.unread ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}`}>
@@ -312,11 +320,11 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         <div className="h-8 w-px bg-slate-200 mx-1 hidden sm:block"></div>
         <div className="relative" ref={profileRef}>
           <button 
-            className="flex items-center gap-3 rounded-xl hover:bg-slate-50 p-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-orange-200"
+            className="flex items-center gap-3 rounded-xl hover:bg-slate-50 p-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-teal-200"
             onClick={() => setIsProfileOpen(!isProfileOpen)}
           >
             <div className="text-right hidden md:block">
-              <p className="text-sm font-medium leading-none text-slate-900">{profile?.displayName || user?.displayName || "Library User"}</p>
+              <p className="text-sm font-medium leading-none text-slate-900">{profile?.displayName || user?.displayName || "User"}</p>
               <p className="text-xs text-slate-500 mt-1">{role || "Staff"}</p>
             </div>
             <Avatar src={profile?.photoURL || user?.photoURL || undefined} fallback={profile?.displayName ? profile.displayName.substring(0, 2).toUpperCase() : (user?.displayName ? user.displayName.substring(0, 2).toUpperCase() : "U")} />
@@ -326,7 +334,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           {isProfileOpen && (
             <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl bg-white shadow-lg ring-1 ring-slate-100 overflow-hidden z-50 py-2">
               <div className="px-4 py-2 border-b border-slate-100 md:hidden">
-                <p className="text-sm font-medium text-slate-900">{profile?.displayName || user?.displayName || "Library User"}</p>
+                <p className="text-sm font-medium text-slate-900">{profile?.displayName || user?.displayName || "User"}</p>
                 <p className="text-xs text-slate-500">{role || "Staff"}</p>
               </div>
               <div className="py-1">

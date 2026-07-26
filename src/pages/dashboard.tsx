@@ -10,7 +10,7 @@ import {
 
 import { fetchBooks, fetchMembers, fetchActivities } from "@/src/lib/db"
 
-const COLORS = ['#F4772D', '#1E293B', '#64748B', '#CBD5E1'];
+const COLORS = ['#24B1B1', '#1E293B', '#64748B', '#CBD5E1'];
 
 export default function Dashboard() {
   const [notified, setNotified] = React.useState<Set<string>>(new Set());
@@ -235,7 +235,7 @@ export default function Dashboard() {
                 Out of {stats.totalBooks.toLocaleString()} total copies
               </p>
             </div>
-            <div className="rounded-lg bg-orange-50 p-2 text-orange-600">
+            <div className="rounded-lg bg-teal-50 p-2 text-teal-600">
               <BookOpen className="h-5 w-5" />
             </div>
           </div>

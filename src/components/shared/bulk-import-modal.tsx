@@ -149,7 +149,7 @@ export function BulkImportModal({ isOpen, onClose, onImport, type }: BulkImportM
                     setCsvText(e.target.value);
                     setError('');
                   }}
-                  className="flex w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-[var(--color-text-main)] outline-none transition-colors placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200 min-h-[200px] font-mono resize-y whitespace-pre" 
+                  className="flex w-full rounded-xl bg-slate-100 px-4 py-3 text-sm text-[var(--color-text-main)] outline-none transition-colors placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200 min-h-[200px] font-mono resize-y whitespace-pre" 
                   placeholder={`title,author,category\nExample Book,John Doe,Fiction`}
                 />
               </div>

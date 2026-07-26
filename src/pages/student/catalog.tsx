@@ -138,7 +138,7 @@ export default function StudentCatalog() {
         <select 
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
-          className="flex h-10 w-full sm:w-48 shrink-0 rounded-md bg-white border border-slate-200 px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-orange-200"
+          className="flex h-10 w-full sm:w-48 shrink-0 rounded-md bg-white border border-slate-200 px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-teal-200"
         >
           <option value="All">All Categories</option>
           {allCategories.map(cat => (
@@ -181,7 +181,7 @@ export default function StudentCatalog() {
                   onClick={() => handleReserve(book)}
                   variant={(book.copiesAvailable > 0 && book.status !== 'Checked Out') ? "default" : "outline"} 
                   disabled={book.copiesAvailable === 0 || book.status === 'Checked Out'} 
-                  className={(book.copiesAvailable > 0 && book.status !== 'Checked Out') ? "bg-[var(--color-primary)] hover:bg-orange-600" : ""}
+                  className={(book.copiesAvailable > 0 && book.status !== 'Checked Out') ? "bg-[var(--color-primary)] hover:bg-teal-600" : ""}
                 >
                   {(book.copiesAvailable > 0 && book.status !== 'Checked Out') ? 'Reserve' : 'Unavailable'}
                 </Button>

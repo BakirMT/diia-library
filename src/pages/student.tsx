@@ -196,7 +196,7 @@ export default function StudentDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-slate-900">Current Loans</CardTitle>
             <Link to="/student/loans">
-              <Button variant="ghost" size="sm" className="text-[var(--color-primary)] hover:text-orange-600">
+              <Button variant="ghost" size="sm" className="text-[var(--color-primary)] hover:text-teal-600">
                 View All <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -230,7 +230,7 @@ export default function StudentDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-slate-900">Fines Overview</CardTitle>
             <Link to="/student/loans">
-              <Button variant="ghost" size="sm" className="text-[var(--color-primary)] hover:text-orange-600">
+              <Button variant="ghost" size="sm" className="text-[var(--color-primary)] hover:text-teal-600">
                 View Details <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

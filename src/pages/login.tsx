@@ -8,10 +8,12 @@ import { useNavigate } from "react-router-dom"
 import { BookOpen, User, Shield, GraduationCap, ArrowRight, Mail, Lock } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
+import { useSettings } from "@/src/lib/SettingsContext"
 
 type Role = 'Member' | 'Librarian' | 'Admin'
 
 export default function Login() {
+  const { settings } = useSettings();
   const [activeRole, setActiveRole] = React.useState<Role>('Member');
   const [usernameOrEmail, setUsernameOrEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -200,7 +202,7 @@ export default function Login() {
             </div>
             
             <h2 className="text-3xl font-bold leading-tight mb-4">
-              Welcome back to your library.
+              Welcome back to {settings.libraryName || 'your library'}.
             </h2>
             <p className="text-white/80 leading-relaxed text-sm">
               Access millions of resources, manage your reading lists, and discover your next great adventure.
@@ -232,7 +234,7 @@ export default function Login() {
                     onClick={() => setActiveRole(role.id as Role)}
                     className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${
                       isActive 
-                        ? 'border-[var(--color-primary)] bg-orange-50/50' 
+                        ? 'border-[var(--color-primary)] bg-teal-50/50' 
                         : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
                     }`}
                   >

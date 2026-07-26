@@ -106,7 +106,7 @@ export default function StudentReservations() {
           <Card key={res.id}>
             <CardContent className="p-0">
               <div className="flex flex-col sm:flex-row sm:items-center p-6 gap-6">
-                <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 ${(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-[var(--color-primary)]'}`}>
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center shrink-0 ${(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? 'bg-emerald-50 text-emerald-600' : 'bg-teal-50 text-[var(--color-primary)]'}`}>
                   {(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
                 </div>
                 
@@ -117,7 +117,7 @@ export default function StudentReservations() {
                       <p className="text-sm text-slate-500">{res.author}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? 'bg-emerald-100 text-emerald-800' : 'bg-orange-100 text-orange-800'}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? 'bg-emerald-100 text-emerald-800' : 'bg-teal-100 text-teal-800'}`}>
                         {(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? 'reservation accepted' : res.status}
                       </span>
                     </div>
@@ -141,7 +141,7 @@ export default function StudentReservations() {
 
                 <div className="flex sm:flex-col gap-2 shrink-0">
                   {(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? (
-                    <Button className="w-full sm:w-auto bg-[var(--color-primary)] hover:bg-orange-600">Got it</Button>
+                    <Button className="w-full sm:w-auto bg-[var(--color-primary)] hover:bg-teal-600">Got it</Button>
                   ) : (
                     confirmingId === res.id ? (
                       <div className="flex sm:flex-col gap-2">

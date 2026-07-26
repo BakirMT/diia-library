@@ -89,7 +89,7 @@ export default function MemberCredentials() {
               <button
                 key={member.id}
                 onClick={() => handleSelectMember(member)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${selectedMember?.id === member.id ? 'bg-orange-50 text-[var(--color-primary)]' : 'hover:bg-slate-50'}`}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${selectedMember?.id === member.id ? 'bg-teal-50 text-[var(--color-primary)]' : 'hover:bg-slate-50'}`}
               >
                 <Avatar className="h-10 w-10 border shadow-sm">
                   <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm font-bold text-slate-600">
@@ -164,7 +164,7 @@ export default function MemberCredentials() {
                     <select 
                       value={status} 
                       onChange={e => setStatus(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200 focus:border-transparent transition-colors"
+                      className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-200 focus:border-transparent transition-colors"
                     >
                       <option value="Active">Active (Permit Login)</option>
                       <option value="Suspended">Suspended (Block Login)</option>

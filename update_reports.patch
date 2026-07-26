@@ -1,0 +1,66 @@
+--- src/pages/reports.tsx
++++ src/pages/reports.tsx
+@@ -10,7 +10,7 @@
+ export default function Reports() {
+   const { settings } = useSettings();
+-  const [reportType, setReportType] = React.useState<'overdue' | 'inventory' | 'fines'>('overdue');
++  const [reportType, setReportType] = React.useState<'checkedout' | 'overdue' | 'inventory' | 'fines'>('checkedout');
+ 
+   const [books, setBooks] = React.useState<any[]>([]);
+   const [activities, setActivities] = React.useState<any[]>([]);
+@@ -35,6 +35,53 @@
+   }, []);
+ 
++  const checkedOutBooksData = React.useMemo(() => {
++    const sortedActivities = [...activities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
++    
++    const bookStates = new Map<string, any>();
++    
++    sortedActivities.forEach(act => {
++      const key = `${act.memberId}::${act.bookTitle}`;
++      if (act.action === 'Check Out') {
++        const coDate = new Date(act.date);
++        const dDate = new Date(coDate);
++        dDate.setDate(dDate.getDate() + 14);
++        bookStates.set(key, {
++          memberId: act.memberId,
++          memberName: act.memberName,
++          bookTitle: act.bookTitle,
++          checkoutDate: coDate.toISOString().split('T')[0],
++          dueDate: dDate.toISOString().split('T')[0],
++          status: 'Active'
++        });
++      } else if (act.action === 'Renew') {
++        const state = bookStates.get(key);
++        if (state && state.status === 'Active') {
++          const dDate = new Date(state.dueDate);
++          dDate.setDate(dDate.getDate() + 7);
++          state.dueDate = dDate.toISOString().split('T')[0];
++        }
++      } else if (act.action === 'Check In') {
++        const state = bookStates.get(key);
++        if (state) {
++          state.status = 'Returned';
++        }
++      }
++    });
++    
++    const activeLoans = Array.from(bookStates.values()).filter(state => state.status === 'Active');
++    const today = new Date();
++    
++    return activeLoans.map(state => {
++      const dueDate = new Date(state.dueDate);
++      const daysOverdue = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
++      let fine = daysOverdue * settings.fineRate;
++      if (fine > settings.maxFine) fine = settings.maxFine;
++      
++      return {
++        ...state,
++        daysOverdue,
++        fineAmount: fine
++      };
++    });
++  }, [activities, settings.fineRate, settings.maxFine]);
++
+   const overdueBooksData = React.useMemo(() => {
+     return activities.filter(a => a.status === 'Overdue').map((item, index) => {

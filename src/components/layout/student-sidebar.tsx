@@ -15,6 +15,7 @@ import {
 import { Button } from "@/src/components/ui/button"
 import { collection, query, where, onSnapshot, doc, getDoc, getDocs } from "firebase/firestore"
 import { db } from "@/src/lib/firebase"
+import { useSettings } from "@/src/lib/SettingsContext"
 
 const navItems = [
   { name: 'My Dashboard', path: '/student', icon: BookOpen },
@@ -32,6 +33,7 @@ interface SidebarProps {
 
 export function StudentSidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { settings } = useSettings();
   const location = useLocation();
   const [unreadChatCount, setUnreadChatCount] = React.useState(0);
   const [memberId, setMemberId] = React.useState<string | null>(null);
@@ -94,14 +96,14 @@ export function StudentSidebar({ isOpen, onClose }: SidebarProps) {
         "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] transition-transform duration-300 ease-in-out lg:static lg:translate-x-0",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex h-16 items-center justify-between px-6 border-b border-[var(--color-border)]">
-          <Link to="/student" className="flex items-center gap-3" onClick={onClose}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-lg shadow-orange-200">
-              <Library className="h-6 w-6" />
+        <div className="flex h-16 items-center justify-between px-6 border-b border-[var(--color-border)] gap-2">
+          <Link to="/student" className="flex items-center gap-3 min-w-0 flex-1" onClick={onClose}>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)] text-white shadow-lg shadow-teal-200">
+              <Library className="h-6 w-6 shrink-0" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900 uppercase">Libra</span>
+            <span className="text-xl font-bold tracking-tight text-slate-900 truncate uppercase">{settings.libraryName || "Libra"}</span>
           </Link>
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="lg:hidden shrink-0" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -117,14 +119,14 @@ export function StudentSidebar({ isOpen, onClose }: SidebarProps) {
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-4 py-3 text-sm transition-colors",
                     isActive 
-                      ? "bg-orange-50 text-[var(--color-primary)] font-semibold" 
+                      ? "bg-teal-50 text-[var(--color-primary)] font-semibold" 
                       : "text-slate-500 hover:text-slate-900 font-medium"
                   )}
                 >
                   <item.icon className={cn("h-5 w-5", isActive ? "text-[var(--color-primary)]" : "text-slate-400")} />
                   <span className="flex-1">{item.name}</span>
                   {item.name === 'Chat' && unreadChatCount > 0 && (
-                    <span className="inline-flex items-center justify-center rounded-full bg-[#F4772D] px-2 py-0.5 text-xs font-medium text-white">
+                    <span className="inline-flex items-center justify-center rounded-full bg-[#24B1B1] px-2 py-0.5 text-xs font-medium text-white">
                       {unreadChatCount}
                     </span>
                   )}

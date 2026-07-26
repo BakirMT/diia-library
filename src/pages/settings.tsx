@@ -30,6 +30,26 @@ export default function Settings() {
   const [editingCategory, setEditingCategory] = React.useState<string | null>(null);
   const [editCategoryValue, setEditCategoryValue] = React.useState('');
   
+  const [libraryName, setLibraryName] = React.useState(settings.libraryName || '');
+  const [libraryAddress, setLibraryAddress] = React.useState(settings.libraryAddress || '');
+  const [libraryEmail, setLibraryEmail] = React.useState(settings.libraryEmail || '');
+  const [libraryPhone, setLibraryPhone] = React.useState(settings.libraryPhone || '');
+  const [libraryWebsite, setLibraryWebsite] = React.useState(settings.libraryWebsite || '');
+
+  React.useEffect(() => {
+    setCurrency(settings.currency);
+    setGracePeriod(settings.gracePeriod.toString());
+    setFineRate(settings.fineRate.toString());
+    setMaxFine(settings.maxFine.toString());
+    setTheme(settings.theme || 'system');
+    setCategories(settings.categories || []);
+    setLibraryName(settings.libraryName || '');
+    setLibraryAddress(settings.libraryAddress || '');
+    setLibraryEmail(settings.libraryEmail || '');
+    setLibraryPhone(settings.libraryPhone || '');
+    setLibraryWebsite(settings.libraryWebsite || '');
+  }, [settings]);
+
   const [isAddStaffModalOpen, setIsAddStaffModalOpen] = React.useState(false);
   const [editingStaff, setEditingStaff] = React.useState<StaffMember | null>(null);
   const [staffList, setStaffList] = React.useState<StaffMember[]>([
@@ -103,6 +123,14 @@ export default function Settings() {
       });
     } else if (activeTab === 'categories') {
       updateSettings({ categories });
+    } else if (activeTab === 'library') {
+      updateSettings({
+        libraryName,
+        libraryAddress,
+        libraryEmail,
+        libraryPhone,
+        libraryWebsite,
+      });
     }
 
     setIsSaving(false);
@@ -147,7 +175,7 @@ export default function Settings() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-orange-50 text-[var(--color-primary)]'
+                  ? 'bg-teal-50 text-[var(--color-primary)]'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
@@ -202,29 +230,7 @@ export default function Settings() {
                 </CardContent>
               </Card>
               
-              <Card>
-                <CardHeader>
-                  <CardTitle>Password & Security</CardTitle>
-                  <CardDescription>Update your password and secure your account.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2 max-w-md">
-                    <label className="text-sm font-medium text-slate-700">Current Password</label>
-                    <Input type="password" />
-                  </div>
-                  <div className="space-y-2 max-w-md">
-                    <label className="text-sm font-medium text-slate-700">New Password</label>
-                    <Input type="password" />
-                  </div>
-                  <div className="space-y-2 max-w-md">
-                    <label className="text-sm font-medium text-slate-700">Confirm New Password</label>
-                    <Input type="password" />
-                  </div>
-                  <div className="pt-4">
-                    <Button variant="outline">Update Password</Button>
-                  </div>
-                </CardContent>
-              </Card>
+              
             </div>
           )}
 
@@ -239,7 +245,7 @@ export default function Settings() {
                   <h4 className="text-sm font-semibold text-slate-900 mb-4">Theme Preference</h4>
                   
                   <div className="flex items-center gap-4">
-                    <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${theme === 'light' ? 'border-[#f97316] bg-[#fff8f1]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                    <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${theme === 'light' ? 'border-[#24B1B1] bg-[#f0fdfa]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
                       <input 
                         type="radio" 
                         name="theme" 
@@ -256,7 +262,7 @@ export default function Settings() {
                       <span className="text-sm font-medium text-slate-800">Light</span>
                     </label>
 
-                    <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${theme === 'dark' ? 'border-[#f97316] bg-[#fff8f1]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                    <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${theme === 'dark' ? 'border-[#24B1B1] bg-[#f0fdfa]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
                       <input 
                         type="radio" 
                         name="theme" 
@@ -273,7 +279,7 @@ export default function Settings() {
                       <span className="text-sm font-medium text-slate-800">Dark</span>
                     </label>
 
-                    <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${theme === 'system' ? 'border-[#f97316] bg-[#fff8f1]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                    <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${theme === 'system' ? 'border-[#24B1B1] bg-[#f0fdfa]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
                       <input 
                         type="radio" 
                         name="theme" 
@@ -311,23 +317,23 @@ export default function Settings() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Library Name</label>
-                    <Input defaultValue="Central City Public Library" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
+                    <Input value={libraryName} onChange={(e) => setLibraryName(e.target.value)} disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Address</label>
-                    <Input defaultValue="123 Library Way, Knowledge City, ST 12345" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
+                    <Input value={libraryAddress} onChange={(e) => setLibraryAddress(e.target.value)} disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Contact Email</label>
-                    <Input type="email" defaultValue="hello@centralcitylib.org" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
+                    <Input type="email" value={libraryEmail} onChange={(e) => setLibraryEmail(e.target.value)} disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Contact Phone</label>
-                    <Input type="tel" defaultValue="(555) 123-4567" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
+                    <Input type="tel" value={libraryPhone} onChange={(e) => setLibraryPhone(e.target.value)} disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium text-slate-700">Website</label>
-                    <Input type="url" defaultValue="https://centralcitylib.org" disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
+                    <Input type="url" value={libraryWebsite} onChange={(e) => setLibraryWebsite(e.target.value)} disabled={role !== 'Admin'} className={role !== 'Admin' ? "bg-slate-50" : ""} />
                   </div>
                 </div>
                 {role === 'Admin' && (
@@ -429,7 +435,7 @@ export default function Settings() {
                           {role === 'Admin' && (
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <Button 
-                                variant="ghost" size="icon" className="h-7 w-7 p-0 text-slate-400 hover:text-[var(--color-primary)] hover:bg-orange-50 shrink-0"
+                                variant="ghost" size="icon" className="h-7 w-7 p-0 text-slate-400 hover:text-[var(--color-primary)] hover:bg-teal-50 shrink-0"
                                 onClick={() => {
                                   setEditingCategory(category);
                                   setEditCategoryValue(category);
@@ -570,7 +576,7 @@ export default function Settings() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="text-slate-500 h-8 w-8 hover:text-[var(--color-primary)] hover:bg-orange-50" onClick={() => handleMessageStaff(staff.email)}>
+                              <Button variant="ghost" size="icon" className="text-slate-500 h-8 w-8 hover:text-[var(--color-primary)] hover:bg-teal-50" onClick={() => handleMessageStaff(staff.email)}>
                                 <Mail className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="sm" className="text-slate-500 h-8 hover:text-slate-900" onClick={() => {
@@ -604,7 +610,7 @@ export default function Settings() {
                     <select 
                       value={currency} 
                       onChange={(e) => setCurrency(e.target.value)} 
-                      className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200"
+                      className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200"
                     >
                       <option value="USD">USD ($)</option>
                       <option value="EUR">EUR (€)</option>
@@ -636,12 +642,12 @@ export default function Settings() {
                   </div>
                 </div>
                 
-                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mt-6">
+                <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 mt-6">
                   <div className="flex gap-3">
-                    <DollarSign className="h-5 w-5 text-orange-600 shrink-0" />
+                    <DollarSign className="h-5 w-5 text-teal-600 shrink-0" />
                     <div>
-                      <h4 className="text-sm font-semibold text-orange-800">Fine Automation</h4>
-                      <p className="text-xs text-orange-600 mt-1">
+                      <h4 className="text-sm font-semibold text-teal-800">Fine Automation</h4>
+                      <p className="text-xs text-teal-600 mt-1">
                         Currently, fines are automatically calculated overnight for all overdue items based on the daily rate specified above, up to the maximum cap.
                       </p>
                     </div>
@@ -667,13 +673,13 @@ export default function Settings() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Overdue Book Alert Subject</label>
-                    <Input defaultValue="Notice: You have an overdue item from Central City Public Library" />
+                    <Input defaultValue={`Notice: You have an overdue item from ${libraryName || 'the Library'}`} />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Overdue Book Alert Body</label>
                     <textarea 
-                      className="w-full min-h-[150px] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
-                      defaultValue={`Dear {{member_name}},\n\nThis is a friendly reminder that the following item(s) you checked out are now overdue:\n\n{{book_title}} (Due: {{due_date}})\n\nPlease check in the items as soon as possible to avoid accumulating further fines. Your current estimated fine is {{fine_amount}}.\n\nThank you,\nCentral City Public Library`}
+                      className="w-full min-h-[150px] rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-200"
+                      defaultValue={`Dear {{member_name}},\n\nThis is a friendly reminder that the following item(s) you checked out are now overdue:\n\n{{book_title}} (Due: {{due_date}})\n\nPlease check in the items as soon as possible to avoid accumulating further fines. Your current estimated fine is {{fine_amount}}.\n\nThank you,\n${libraryName || 'The Library'}`}
                     ></textarea>
                     <p className="text-xs text-slate-500">
                       Available variables: <code>{`{{member_name}}`}</code>, <code>{`{{book_title}}`}</code>, <code>{`{{due_date}}`}</code>, <code>{`{{fine_amount}}`}</code>

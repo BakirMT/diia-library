@@ -82,7 +82,7 @@ export function AddBookModal({ isOpen, onClose, onSave, initialData }: AddBookMo
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Category / Genre</label>
-                <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200">
+                <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200">
                   <option value="">Select category</option>
                   {(settings.categories || []).map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -127,7 +127,7 @@ export function AddBookModal({ isOpen, onClose, onSave, initialData }: AddBookMo
               
               <div className="space-y-2">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Status</label>
-                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200">
+                <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200">
                   <option value="Available">Available</option>
                   <option value="Reserved">Reserved</option>
                   <option value="Out of Stock">Out of Stock</option>
@@ -143,7 +143,7 @@ export function AddBookModal({ isOpen, onClose, onSave, initialData }: AddBookMo
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Synopsis / Description</label>
                 <textarea 
                   value={formData.synopsis} onChange={e => setFormData({ ...formData, synopsis: e.target.value })}
-                  className="flex w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm text-[var(--color-text-main)] outline-none transition-colors placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200 min-h-[100px] resize-y" 
+                  className="flex w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm text-[var(--color-text-main)] outline-none transition-colors placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200 min-h-[100px] resize-y" 
                   placeholder="Brief description of the book..."
                 />
               </div>

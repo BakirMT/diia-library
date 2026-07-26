@@ -52,7 +52,7 @@ export default function StudentHistory() {
                       <span className="text-slate-600">{item.returned}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1 text-orange-400">
+                      <div className="flex items-center gap-1 text-teal-400">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <Star key={i} className={`h-4 w-4 ${i < item.rating ? 'fill-current' : 'text-slate-200'}`} />
                         ))}

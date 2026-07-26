@@ -71,7 +71,7 @@ export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemb
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Gender</label>
-                    <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200">
+                    <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200">
                       <option value="">Select gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -103,7 +103,7 @@ export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemb
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Full Address</label>
                   <textarea 
                     value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })}
-                    className="flex w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm text-[var(--color-text-main)] outline-none transition-colors placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200 min-h-[80px] resize-y" 
+                    className="flex w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm text-[var(--color-text-main)] outline-none transition-colors placeholder:text-slate-400 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200 min-h-[80px] resize-y" 
                     placeholder="Enter street address, city, state, zip..."
                   />
                 </div>
@@ -120,7 +120,7 @@ export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemb
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Type / Tier <span className="text-red-500">*</span></label>
-                  <select value={formData.membershipType} onChange={e => setFormData({ ...formData, membershipType: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200">
+                  <select value={formData.membershipType} onChange={e => setFormData({ ...formData, membershipType: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200">
                     <option value="Member">Member</option>
                     <option value="Staff">Staff</option>
                   </select>
@@ -144,7 +144,7 @@ export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemb
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200">
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="flex h-10 w-full rounded-full bg-slate-100 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-r-8 border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200">
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                     <option value="Suspended">Suspended</option>

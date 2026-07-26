@@ -152,7 +152,7 @@ export default function StudentInbox() {
                       <div className="mt-2">
                         {msg.metadata.status === 'permitted' ? (
                           <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'} inline-block`}>
-                            Permitted & Checked Out
+                            Permitted & Checked Out {msg.metadata.permittedBy ? `(by ${msg.metadata.permittedBy})` : ''}
                           </div>
                         ) : (
                           <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'} inline-block`}>
@@ -165,7 +165,7 @@ export default function StudentInbox() {
                       <div className="mt-2">
                         {msg.metadata.status === 'permitted' ? (
                           <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'} inline-block`}>
-                            Renew Permitted
+                            Renew Permitted {msg.metadata.permittedBy ? `(by ${msg.metadata.permittedBy})` : ''}
                           </div>
                         ) : (
                           <div className={`text-xs font-medium px-2 py-1 rounded ${!msg.isSender ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'} inline-block`}>
@@ -187,7 +187,7 @@ export default function StudentInbox() {
         <div className="p-4 border-t border-slate-100 bg-white shrink-0">
           <form 
             onSubmit={handleSendMessage}
-            className="flex items-center gap-2 bg-slate-50 rounded-full p-1 pr-2 border border-slate-100 focus-within:border-orange-200 focus-within:ring-2 focus-within:ring-orange-100 transition-all"
+            className="flex items-center gap-2 bg-slate-50 rounded-full p-1 pr-2 border border-slate-100 focus-within:border-teal-200 focus-within:ring-2 focus-within:ring-teal-100 transition-all"
           >
             <input 
               type="text" 
@@ -200,7 +200,7 @@ export default function StudentInbox() {
               type="submit" 
               size="icon" 
               className={`rounded-full shrink-0 transition-colors ${
-                newMessage.trim() ? 'bg-[var(--color-primary)] text-white hover:bg-orange-600' : 'bg-slate-200 text-slate-400'
+                newMessage.trim() ? 'bg-[var(--color-primary)] text-white hover:bg-teal-600' : 'bg-slate-200 text-slate-400'
               }`}
               disabled={!newMessage.trim()}
             >

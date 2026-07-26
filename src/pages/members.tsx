@@ -344,7 +344,7 @@ export default function Members() {
           <select 
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="flex h-10 w-full sm:w-48 rounded-full bg-slate-50 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-orange-200"
+            className="flex h-10 w-full sm:w-48 rounded-full bg-slate-50 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200"
           >
             <option value="All">All Types</option>
             <option value="Member">Member</option>
@@ -449,7 +449,7 @@ export default function Members() {
                         </Button>
                       )}
                       {member.status === 'Active' && member.password && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-orange-500 hover:text-orange-700 hover:bg-orange-50" onClick={(e) => { e.stopPropagation(); navigate(`/inbox?memberId=${member.id}`); }} title="Message Member">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-teal-500 hover:text-teal-700 hover:bg-teal-50" onClick={(e) => { e.stopPropagation(); navigate(`/inbox?memberId=${member.id}`); }} title="Message Member">
                           <MessageSquare className="h-4 w-4" />
                         </Button>
                       )}

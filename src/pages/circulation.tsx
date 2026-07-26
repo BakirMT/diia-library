@@ -508,7 +508,7 @@ export default function Circulation() {
                   <div className="pt-4 border-t border-slate-100 flex items-center gap-4">
                     <Avatar 
                       className="h-12 w-12 border-2 border-white shadow-sm"
-                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${selectedMember.name}&backgroundColor=F4772D`}
+                      src={`https://api.dicebear.com/7.x/initials/svg?seed=${selectedMember.name}&backgroundColor=24B1B1`}
                       fallback={selectedMember.fallback}
                     />
                     <div>
@@ -619,7 +619,7 @@ export default function Circulation() {
                 >
                   <BookDown className="h-4 w-4" /> Check In
                   {memberRecords.length > 0 && (
-                    <span className="bg-orange-100 text-orange-700 py-0.5 px-2 rounded-full text-xs">
+                    <span className="bg-teal-100 text-teal-700 py-0.5 px-2 rounded-full text-xs">
                       {memberRecords.length}
                     </span>
                   )}
@@ -645,7 +645,7 @@ export default function Circulation() {
                         {filteredBooks.length > 0 ? (
                           <div className="grid gap-4">
                             {filteredBooks.map(book => (
-                              <div key={book.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-orange-100 hover:bg-orange-50/50 transition-colors group">
+                              <div key={book.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-teal-100 hover:bg-teal-50/50 transition-colors group">
                                 <div className="flex items-center gap-4">
                                   <div className="h-12 w-10 bg-slate-100 rounded overflow-hidden shrink-0">
                                     {book.cover ? (

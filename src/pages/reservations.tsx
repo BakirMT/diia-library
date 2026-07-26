@@ -284,7 +284,7 @@ export default function AdminReservations() {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Active</p>
                 <h3 className="mt-2 text-3xl font-bold text-slate-900">{stats.active}</h3>
               </div>
-              <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center text-[var(--color-primary)]">
+              <div className="h-12 w-12 rounded-xl bg-teal-50 flex items-center justify-center text-[var(--color-primary)]">
                 <Bookmark className="h-6 w-6" />
               </div>
             </div>
@@ -387,7 +387,7 @@ export default function AdminReservations() {
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                     {/* Left section: Book and Member */}
                     <div className="flex flex-col sm:flex-row gap-6 items-start flex-1">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-[var(--color-primary)] shrink-0 mt-1">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-[var(--color-primary)] shrink-0 mt-1">
                         <BookOpen className="h-6 w-6" />
                       </div>
                       <div className="space-y-3 flex-1 min-w-0">
@@ -400,7 +400,7 @@ export default function AdminReservations() {
                         <div className="flex items-center gap-3 pt-2 border-t border-slate-50">
                           <Avatar 
                             className="h-8 w-8 ring-2 ring-white"
-                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${member?.name || 'A'}&backgroundColor=F4772D`}
+                            src={`https://api.dicebear.com/7.x/initials/svg?seed=${member?.name || 'A'}&backgroundColor=24B1B1`}
                             fallback={member?.fallback || 'M'}
                           />
                           <div className="min-w-0">

@@ -7,6 +7,8 @@ import { Search, Send, Paperclip, MoreVertical, Phone, Video, Info, ArrowLeft } 
 import { useSearchParams } from "react-router-dom"
 import { fetchConversations, fetchMessages, sendMessage, permitReservation, permitRenew, addNotification, markConversationNotificationsRead } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
+import { db } from "@/src/lib/firebase"
+import { collection, query, where, onSnapshot } from "firebase/firestore"
 
 
 export default function Inbox() {
@@ -46,17 +48,28 @@ export default function Inbox() {
   }, [currentRole]);
 
   React.useEffect(() => {
-    if (activeConversation && !messagesByConv[activeConversation.id]) {
-      fetchMessages(activeConversation.id, currentRole).then(msgs => {
-        setMessagesByConv(prev => ({
-          ...prev,
-          [activeConversation.id]: msgs
-        }));
+    if (!activeConversation) return;
+
+    const q = query(collection(db, "messages"), where("memberId", "==", activeConversation.id));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs: any[] = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if ((data.targetRole || 'Admin') === currentRole) {
+          msgs.push({ id: doc.id, ...data });
+        }
       });
-    }
-    if (activeConversation) {
-      markConversationNotificationsRead(currentRole.toLowerCase(), activeConversation.name);
-    }
+      msgs.sort((a, b) => a.timestamp - b.timestamp);
+      
+      setMessagesByConv(prev => ({
+        ...prev,
+        [activeConversation.id]: msgs
+      }));
+    });
+
+    markConversationNotificationsRead(currentRole.toLowerCase(), activeConversation.name);
+    
+    return () => unsubscribe();
   }, [activeConversation, currentRole]);
 
   const currentMessages = activeConversation ? (messagesByConv[activeConversation.id] || []) : [];
@@ -66,11 +79,6 @@ export default function Inbox() {
   }, [currentMessages, activeConversation]);
 
   const addMessageToUI = (newMsg: any) => {
-    setMessagesByConv(prev => ({
-      ...prev,
-      [activeConversation.id]: [...(prev[activeConversation.id] || []), newMsg]
-    }));
-    
     setConversations(prev => {
       const copy = [...prev];
       const idx = copy.findIndex(c => c.id === activeConversation.id);
@@ -91,18 +99,8 @@ export default function Inbox() {
   const handlePermitReservation = async (msg: any) => {
     try {
       if (!msg.metadata || !msg.metadata.reservationId) return;
-      await permitReservation(msg.metadata.reservationId, msg.metadata.bookId, activeConversation.id, msg.id);
+      await permitReservation(msg.metadata.reservationId, msg.metadata.bookId, activeConversation.id, msg.id, currentRole);
       
-      // Update local message state
-      setMessagesByConv(prev => ({
-        ...prev,
-        [activeConversation.id]: (prev[activeConversation.id] || []).map(m => 
-          m.id === msg.id 
-            ? { ...m, metadata: { ...m.metadata, status: 'permitted' } } 
-            : m
-        )
-      }));
-
       // Notify the member
       await addNotification({
         userId: activeConversation.id,
@@ -121,18 +119,8 @@ export default function Inbox() {
   const handlePermitRenew = async (msg: any) => {
     try {
       if (!msg.metadata || !msg.metadata.bookTitle) return;
-      await permitRenew(msg.metadata.bookTitle, activeConversation.id, msg.id);
+      await permitRenew(msg.metadata.bookTitle, activeConversation.id, msg.id, currentRole);
       
-      // Update local message state
-      setMessagesByConv(prev => ({
-        ...prev,
-        [activeConversation.id]: (prev[activeConversation.id] || []).map(m => 
-          m.id === msg.id 
-            ? { ...m, metadata: { ...m.metadata, status: 'permitted' } } 
-            : m
-        )
-      }));
-
       // Notify the member
       await addNotification({
         userId: activeConversation.id,
@@ -211,7 +199,7 @@ export default function Inbox() {
                 setShowSidebarOnMobile(false);
               }}
               className={`flex items-start gap-3 p-4 cursor-pointer transition-colors border-b border-slate-50 ${
-                activeConversation?.id === conv.id ? 'bg-orange-50' : 'hover:bg-slate-50'
+                activeConversation?.id === conv.id ? 'bg-teal-50' : 'hover:bg-slate-50'
               }`}
             >
               <div className="relative shrink-0">
@@ -309,14 +297,14 @@ export default function Inbox() {
                         {msg.metadata && msg.metadata.type === 'reservation' && (
                           <div className="mt-3">
                             {msg.metadata.status === 'permitted' ? (
-                              <div className={`text-xs font-medium px-3 py-1 rounded bg-green-100 text-green-700 inline-block`}>
-                                Permitted & Checked Out
+                              <div className={`text-xs font-medium px-3 py-1.5 rounded bg-green-50 text-green-700 border border-green-100 flex items-center justify-center text-center`}>
+                                Permitted & Checked Out {msg.metadata.permittedBy ? `(by ${msg.metadata.permittedBy})` : ''}
                               </div>
                             ) : (
                               <Button 
                                 size="sm" 
                                 onClick={() => handlePermitReservation(msg)}
-                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-orange-600"}
+                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-teal-600"}
                               >
                                 Permit Reservation
                               </Button>
@@ -326,14 +314,14 @@ export default function Inbox() {
                         {msg.metadata && msg.metadata.type === 'renew' && (
                           <div className="mt-3">
                             {msg.metadata.status === 'permitted' ? (
-                              <div className={`text-xs font-medium px-3 py-1 rounded bg-green-100 text-green-700 inline-block`}>
-                                Renew Permitted
+                              <div className={`text-xs font-medium px-3 py-1.5 rounded bg-green-50 text-green-700 border border-green-100 flex items-center justify-center text-center`}>
+                                Renew Permitted {msg.metadata.permittedBy ? `(by ${msg.metadata.permittedBy})` : ''}
                               </div>
                             ) : (
                               <Button 
                                 size="sm" 
                                 onClick={() => handlePermitRenew(msg)}
-                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-orange-600"}
+                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-teal-600"}
                               >
                                 Permit Renew
                               </Button>
@@ -353,7 +341,7 @@ export default function Inbox() {
             <div className="p-4 border-t border-slate-100 bg-white shrink-0">
               <form 
                 onSubmit={handleSendMessage}
-                className="flex items-center gap-2 bg-slate-50 rounded-full p-1 pr-2 border border-slate-100 focus-within:border-orange-200 focus-within:ring-2 focus-within:ring-orange-100 transition-all"
+                className="flex items-center gap-2 bg-slate-50 rounded-full p-1 pr-2 border border-slate-100 focus-within:border-teal-200 focus-within:ring-2 focus-within:ring-teal-100 transition-all"
               >
                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
                 <Button type="button" variant="ghost" size="icon" className="rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-200 shrink-0" onClick={() => fileInputRef.current?.click()}>
@@ -370,7 +358,7 @@ export default function Inbox() {
                   type="submit" 
                   size="icon" 
                   className={`rounded-full shrink-0 transition-colors ${
-                    newMessage.trim() ? 'bg-[var(--color-primary)] text-white hover:bg-orange-600' : 'bg-slate-200 text-slate-400'
+                    newMessage.trim() ? 'bg-[var(--color-primary)] text-white hover:bg-teal-600' : 'bg-slate-200 text-slate-400'
                   }`}
                   disabled={!newMessage.trim()}
                 >

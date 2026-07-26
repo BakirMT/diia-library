@@ -92,7 +92,7 @@ export default function StudentSettings() {
   if (isLoading) {
       return (
           <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500"></div>
           </div>
       );
   }
@@ -139,7 +139,7 @@ export default function StudentSettings() {
                 <label className="text-sm font-medium text-slate-700">Class / Cohort</label>
                 <Input value={studentClass} onChange={e => setStudentClass(e.target.value)} />
               </div>
-              <Button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] hover:bg-orange-600">
+              <Button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] hover:bg-teal-600">
                  {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </form>
@@ -184,7 +184,7 @@ export default function StudentSettings() {
               <h4 className="text-sm font-semibold text-slate-900 mb-4">Theme Preference</h4>
               
               <div className="flex items-center gap-4 flex-wrap">
-                <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${settings.theme === 'light' ? 'border-[#f97316] bg-[#fff8f1]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${settings.theme === 'light' ? 'border-[#24B1B1] bg-[#f0fdfa]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
                   <input 
                     type="radio" 
                     name="student-theme" 
@@ -201,7 +201,7 @@ export default function StudentSettings() {
                   <span className="text-sm font-medium text-slate-800">Light</span>
                 </label>
 
-                <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${settings.theme === 'dark' ? 'border-[#f97316] bg-[#fff8f1]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${settings.theme === 'dark' ? 'border-[#24B1B1] bg-[#f0fdfa]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
                   <input 
                     type="radio" 
                     name="student-theme" 
@@ -218,7 +218,7 @@ export default function StudentSettings() {
                   <span className="text-sm font-medium text-slate-800">Dark</span>
                 </label>
 
-                <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${settings.theme === 'system' ? 'border-[#f97316] bg-[#fff8f1]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
+                <label className={`flex flex-col items-center justify-center cursor-pointer w-24 h-28 rounded-xl border-2 transition-all ${settings.theme === 'system' ? 'border-[#24B1B1] bg-[#f0fdfa]' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
                   <input 
                     type="radio" 
                     name="student-theme" 
