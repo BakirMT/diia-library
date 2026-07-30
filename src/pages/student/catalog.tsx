@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/src/components/ui/card"
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
 import { Search, Filter, BookOpen } from "lucide-react"
-import { fetchBooks, addReservation, updateBook, addNotification, sendMessage } from "@/src/lib/db"
+import { fetchBooks, addReservation, updateBook, addNotification, sendMessage, fetchActivities } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
 import { doc, getDoc, collection, getDocs } from "firebase/firestore"
@@ -97,9 +97,34 @@ export default function StudentCatalog() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [books, setBooks] = React.useState<any[]>([]);
+  const [currentCheckoutsByTitle, setCurrentCheckoutsByTitle] = React.useState<Map<string, string[]>>(new Map());
 
   React.useEffect(() => {
     fetchBooks().then(setBooks);
+    fetchActivities().then((activities) => {
+      const checkouts = new Map<string, string>();
+      const sorted = [...activities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      sorted.forEach(act => {
+        if (!act.memberId || !act.bookTitle) return;
+        const key = `${act.memberId}::${act.bookTitle}`;
+        if (act.action === 'Check Out') {
+          checkouts.set(key, act.memberName || 'Unknown Member');
+        } else if (act.action === 'Check In') {
+          checkouts.delete(key);
+        }
+      });
+      
+      const byTitle = new Map<string, string[]>();
+      checkouts.forEach((memberName, key) => {
+        const title = key.split('::')[1];
+        if (!byTitle.has(title)) byTitle.set(title, []);
+        if (!byTitle.get(title)!.includes(memberName)) {
+           byTitle.get(title)!.push(memberName);
+        }
+      });
+      setCurrentCheckoutsByTitle(byTitle);
+    });
   }, []);
   
   const allCategories = React.useMemo(() => {
@@ -173,6 +198,11 @@ export default function StudentCatalog() {
                 </Badge>
                 <h3 className="font-bold text-slate-900 line-clamp-1" title={book.title}>{book.title}</h3>
                 <p className="text-xs text-slate-500 mt-1">{book.author}</p>
+                {currentCheckoutsByTitle.get(book.title) && currentCheckoutsByTitle.get(book.title)!.length > 0 && (
+                  <p className="text-xs font-semibold text-[var(--color-primary)] mt-1">
+                    Checked out by: {currentCheckoutsByTitle.get(book.title)!.join(', ')}
+                  </p>
+                )}
               </div>
               <div className="mt-auto pt-4 flex items-center justify-between">
                 <span className="text-xs font-medium text-slate-400">{book.category}</span>

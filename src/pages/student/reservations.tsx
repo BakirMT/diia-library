@@ -5,12 +5,13 @@ import { Bookmark, Clock, CheckCircle2 } from "lucide-react"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore"
-import { fetchReservationsByMember, deleteReservation, updateBook } from "@/src/lib/db"
+import { fetchReservationsByMember, deleteReservation, updateBook, fetchActivities } from "@/src/lib/db"
 
 
 export default function StudentReservations() {
   const { user } = useAuth();
   const [reservations, setReservations] = React.useState<any[]>([]);
+  const [currentCheckoutsByTitle, setCurrentCheckoutsByTitle] = React.useState<Map<string, string[]>>(new Map());
   const [isLoading, setIsLoading] = React.useState(true);
   const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
 
@@ -59,6 +60,7 @@ export default function StudentReservations() {
         const userData = userDoc.exists() ? userDoc.data() : null;
         
         const membersSnap = await getDocs(collection(db, 'members'));
+        const membersMap = new Map<string, any>();
         let memberId = user.uid;
 
         const isEmailMatch = (email1: string, email2: string) => {
@@ -69,6 +71,7 @@ export default function StudentReservations() {
 
         membersSnap.forEach(d => {
           const data = d.data();
+          membersMap.set(d.id, data);
           const safeId = d.id.replace(/[^a-zA-Z0-9]/g, '');
           const internalEmail = `${safeId}@v2.member.libsys.local`;
           if (
@@ -83,6 +86,30 @@ export default function StudentReservations() {
         
         const resList = await fetchReservationsByMember(memberId);
         setReservations(resList);
+
+        const activities = await fetchActivities();
+        const checkouts = new Map<string, string>();
+        const sorted = [...activities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        
+        sorted.forEach(act => {
+          if (!act.memberId || !act.bookTitle) return;
+          const key = `${act.memberId}::${act.bookTitle}`;
+          if (act.action === 'Check Out') {
+            checkouts.set(key, act.memberName || membersMap.get(act.memberId)?.name || 'Unknown Member');
+          } else if (act.action === 'Check In') {
+            checkouts.delete(key);
+          }
+        });
+        
+        const byTitle = new Map<string, string[]>();
+        checkouts.forEach((memberName, key) => {
+          const title = key.split('::')[1];
+          if (!byTitle.has(title)) byTitle.set(title, []);
+          if (!byTitle.get(title)!.includes(memberName)) {
+             byTitle.get(title)!.push(memberName);
+          }
+        });
+        setCurrentCheckoutsByTitle(byTitle);
       } catch (err) {
         console.error(err);
       } finally {
@@ -114,7 +141,12 @@ export default function StudentReservations() {
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                     <div>
                       <h3 className="text-lg font-bold text-slate-900">{res.title}</h3>
-                      <p className="text-sm text-slate-500">{res.author}</p>
+                      <p className="text-sm text-slate-500">by {res.author}</p>
+                      {currentCheckoutsByTitle.get(res.title) && currentCheckoutsByTitle.get(res.title)!.length > 0 && (
+                        <p className="text-xs font-semibold text-[var(--color-primary)] mt-1">
+                          Checked out by: {currentCheckoutsByTitle.get(res.title)!.join(', ')}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${(res.status === 'Ready for pickup' || res.status === 'Fulfilled') ? 'bg-emerald-100 text-emerald-800' : 'bg-teal-100 text-teal-800'}`}>

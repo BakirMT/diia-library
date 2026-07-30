@@ -1,3 +1,4 @@
+import { useSettings } from "@/src/lib/SettingsContext"
 import * as React from "react"
 import { Plus, Search, Filter, Edit2, Trash2, Mail, Phone, Upload, Download, MessageSquare, CreditCard } from "lucide-react"
 import { exportToCSV } from "@/src/lib/export"
@@ -12,6 +13,7 @@ import { useNavigate } from "react-router-dom"
 import { fetchMembers, addMember, updateMember, deleteMember, fetchActivities, addNotification } from "@/src/lib/db"
 
 export default function Members() {
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [members, setMembers] = React.useState<any[]>([]);
   const [activities, setActivities] = React.useState<any[]>([]);
@@ -61,7 +63,7 @@ export default function Members() {
       await addNotification({
         userId: payingFineMember.id,
         title: 'Fine Payment Received',
-        message: `Successfully processed fine payment of $${amount.toFixed(2)}. Your remaining fine balance is $${newFinesDue.toFixed(2)}.`,
+        message: `Successfully processed fine payment of ${settings.currencySymbol}${amount.toFixed(2)}. Your remaining fine balance is ${settings.currencySymbol}${newFinesDue.toFixed(2)}.`,
         type: 'fine'
       });
       
@@ -122,7 +124,7 @@ export default function Members() {
 
   const handleExport = () => {
     const dataToExport = filteredMembers.map(member => ({
-      'Photo URL': member.photoUrl || member.photo || '',
+      'Photo URL': member.photoURL || member.photo || '',
       'Full Name': member.name || '',
       'Gender': member.gender || '',
       'Date of Birth': member.dob || '',
@@ -183,9 +185,9 @@ export default function Members() {
           <div className="absolute inset-0 bg-black/50" onClick={() => setPayingFineMember(null)} />
           <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden p-6 space-y-4">
             <h3 className="text-lg font-bold text-slate-900">Pay Fine</h3>
-            <p className="text-sm text-slate-500">Member "{payingFineMember.name}" has an outstanding fine of <strong>${payingFineMember.finesDue.toFixed(2)}</strong>.</p>
+            <p className="text-sm text-slate-500">Member "{payingFineMember.name}" has an outstanding fine of <strong>{settings.currencySymbol}{payingFineMember.finesDue.toFixed(2)}</strong>.</p>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Payment Amount ($)</label>
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Payment Amount ({settings.currencySymbol})</label>
               <Input 
                 type="number" 
                 min="0.01" 
@@ -422,9 +424,9 @@ export default function Members() {
                   </td>
                   <td className="px-6 py-4 text-right font-medium">
                     {member.finesDue > 0 ? (
-                      <span className="text-red-600">${Number(member.finesDue).toFixed(2)}</span>
+                      <span className="text-red-600">{settings.currencySymbol}{Number(member.finesDue).toFixed(2)}</span>
                     ) : (
-                      <span className="text-slate-400">$0.00</span>
+                      <span className="text-slate-400">{settings.currencySymbol}0.00</span>
                     )}
                   </td>
                   <td className="px-6 py-4">

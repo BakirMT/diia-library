@@ -91,6 +91,31 @@ export default function AdminReservations() {
     return activeSet;
   }, [activities]);
 
+  const currentCheckoutsByTitle = React.useMemo(() => {
+    const checkouts = new Map<string, string>();
+    const sorted = [...activities].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    sorted.forEach(act => {
+      if (!act.memberId || !act.bookTitle) return;
+      const key = `${act.memberId}::${act.bookTitle}`;
+      if (act.action === 'Check Out') {
+        checkouts.set(key, act.memberName || membersMap.get(act.memberId)?.name || 'Unknown Member');
+      } else if (act.action === 'Check In') {
+        checkouts.delete(key);
+      }
+    });
+    
+    const byTitle = new Map<string, string[]>();
+    checkouts.forEach((memberName, key) => {
+      const title = key.split('::')[1];
+      if (!byTitle.has(title)) byTitle.set(title, []);
+      if (!byTitle.get(title)!.includes(memberName)) {
+         byTitle.get(title)!.push(memberName);
+      }
+    });
+    return byTitle;
+  }, [activities, membersMap]);
+
   const handleMarkReady = async (res: any) => {
     const key = `${res.memberId}::${res.title}`;
     if (activeCheckouts.has(key)) {
@@ -394,6 +419,11 @@ export default function AdminReservations() {
                         <div>
                           <h4 className="text-lg font-bold text-slate-900 truncate">{res.title}</h4>
                           <p className="text-sm text-slate-500">by {res.author}</p>
+                          {currentCheckoutsByTitle.get(res.title) && currentCheckoutsByTitle.get(res.title)!.length > 0 && (
+                            <p className="text-xs font-semibold text-[var(--color-primary)] mt-1">
+                              Checked out by: {currentCheckoutsByTitle.get(res.title)!.join(', ')}
+                            </p>
+                          )}
                         </div>
 
                         {/* Member Details */}

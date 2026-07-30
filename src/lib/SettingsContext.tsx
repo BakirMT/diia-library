@@ -7,6 +7,7 @@ export interface Settings {
   currencySymbol: string;
   fineRate: number;
   gracePeriod: number;
+  loanPeriod: number;
   maxFine: number;
   theme: 'light' | 'dark' | 'system';
   categories: string[];
@@ -29,6 +30,7 @@ const defaultSettings: Settings = {
   currencySymbol: '$',
   fineRate: 0.50,
   gracePeriod: 3,
+  loanPeriod: 14,
   maxFine: 20.00,
   theme: 'system',
   categories: ['Fiction', 'Non-Fiction', 'Science', 'History', 'Technology', 'Art', 'Business'],

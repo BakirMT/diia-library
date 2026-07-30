@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/ca
 import { Badge } from "@/src/components/ui/badge"
 import { BookOpen, CheckCircle, Clock, AlertCircle, CreditCard, RotateCw } from "lucide-react"
 import { useAuth } from "@/src/lib/AuthContext"
+import { useSettings } from "@/src/lib/SettingsContext"
 import { db } from "@/src/lib/firebase"
 import { collection, getDocs, doc, getDoc, addDoc } from "firebase/firestore"
 import { Button } from "@/src/components/ui/button"
@@ -10,6 +11,7 @@ import { sendMessage } from "@/src/lib/db"
 
 export default function StudentLoans() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [activeTab, setActiveTab] = React.useState('checked-out');
   const [memberInfo, setMemberInfo] = React.useState<any>(null);
   
@@ -81,7 +83,7 @@ export default function StudentLoans() {
            if (act.action === 'Check Out') {
                const coDate = new Date(act.date);
                const dDate = new Date(coDate);
-               dDate.setDate(dDate.getDate() + 14); // 14 days default
+               dDate.setDate(dDate.getDate() + (settings.loanPeriod || 14));
                
                if (bookStates.has(act.bookTitle)) {
                   const state = bookStates.get(act.bookTitle)!;
@@ -162,7 +164,7 @@ export default function StudentLoans() {
                       dueDate: state.dueDate,
                       cover: bookInfo.cover || bookInfo.imageUrl || 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=100&auto=format&fit=crop',
                       daysOverdue: diffDays,
-                      fineEstimate: diffDays * 0.50, // $0.50 per day
+                      fineEstimate: diffDays > (settings.gracePeriod || 0) ? Math.min(settings.maxFine || 20, diffDays * (settings.fineRate || 0.5)) : 0,
                        renewCount: state.renewCount || 0,
                         hasPendingRequest: state.hasPendingRequest || false
                    });
@@ -182,7 +184,7 @@ export default function StudentLoans() {
            state.history.forEach(h => {
                if (h.returned) {
                    returnedHistory.push({
-                       id: `${title}-${h.borrowed}`,
+                       id: `${title}-${h.borrowed}-${h.returned}-${Math.random().toString(36).substring(2, 9)}`,
                        title,
                        author: bookInfo.author,
                        borrowed: h.borrowed,
@@ -406,7 +408,7 @@ export default function StudentLoans() {
                       <p className="text-xs text-slate-500 mb-2">{loan.author}</p>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
                         <Badge variant="destructive" className="text-[10px]">Overdue by {loan.daysOverdue} days</Badge>
-                        <span className="text-xs font-semibold text-red-600">Est. Fine: ${loan.fineEstimate.toFixed(2)}</span>
+                        <span className="text-xs font-semibold text-red-600">Est. Fine: {settings.currencySymbol}{loan.fineEstimate.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
@@ -478,7 +480,7 @@ export default function StudentLoans() {
                       <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 font-medium text-slate-900">{item.reason}</td>
                         <td className="px-6 py-4 text-slate-600">{item.date}</td>
-                        <td className="px-6 py-4 text-right font-bold text-slate-900">${item.amount.toFixed(2)}</td>
+                        <td className="px-6 py-4 text-right font-bold text-slate-900">{settings.currencySymbol}{item.amount.toFixed(2)}</td>
                         <td className="px-6 py-4 text-center">
                           <Badge variant={item.status === 'Unpaid' ? 'destructive' : 'outline'} className={item.status === 'Unpaid' ? '' : 'bg-green-50 text-green-700 border-green-200'}>
                             {item.status}

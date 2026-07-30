@@ -12,7 +12,7 @@ interface AddMemberModalProps {
 
 export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemberModalProps) {
   const [formData, setFormData] = React.useState({
-    id: '', photoUrl: '',
+    id: '', photoURL: '',
     name: '', username: '', gender: '', dob: '', email: '', phone: '', address: '', membershipType: 'Member', fee: '', studentClass: '', expiryDate: '', status: 'Active'
   });
 
@@ -20,7 +20,7 @@ export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemb
     if (initialData) {
       setFormData({ ...formData, ...initialData });
     } else {
-      setFormData({ id: '', name: '', username: '', gender: '', dob: '', email: '', phone: '', address: '', membershipType: 'Member', fee: '', studentClass: '', expiryDate: '', status: 'Active', photoUrl: '' });
+      setFormData({ id: '', name: '', username: '', gender: '', dob: '', email: '', phone: '', address: '', membershipType: 'Member', fee: '', studentClass: '', expiryDate: '', status: 'Active', photoURL: '' });
     }
   }, [initialData, isOpen]);
 
@@ -49,8 +49,8 @@ export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemb
               <div className="flex flex-col sm:flex-row gap-6">
                 <div className="flex flex-col items-center gap-2 shrink-0">
                   <div className="w-24 h-24 bg-slate-100 rounded-full border border-slate-200 flex flex-col items-center justify-center text-slate-400 overflow-hidden shrink-0">
-                    {formData.photoUrl ? (
-                      <img src={formData.photoUrl} alt="Photo" className="w-full h-full object-cover" />
+                    {formData.photoURL ? (
+                      <img src={formData.photoURL} alt="Photo" className="w-full h-full object-cover" />
                     ) : (
                       <>
                         <Camera className="h-6 w-6 mb-1" />
@@ -63,7 +63,7 @@ export function AddMemberModal({ isOpen, onClose, onSave, initialData }: AddMemb
                 <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Photo URL</label>
-                    <Input value={formData.photoUrl || ''} onChange={e => setFormData({ ...formData, photoUrl: e.target.value })} placeholder="https://example.com/photo.jpg" type="url" />
+                    <Input value={formData.photoURL || ''} onChange={e => setFormData({ ...formData, photoURL: e.target.value })} placeholder="https://example.com/photo.jpg" type="url" />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Full Name <span className="text-red-500">*</span></label>

@@ -21,6 +21,7 @@ export default function Settings() {
   
   // Form states for settings
   const [currency, setCurrency] = React.useState(settings.currency);
+  const [loanPeriod, setLoanPeriod] = React.useState((settings.loanPeriod || 14).toString());
   const [gracePeriod, setGracePeriod] = React.useState(settings.gracePeriod.toString());
   const [fineRate, setFineRate] = React.useState(settings.fineRate.toString());
   const [maxFine, setMaxFine] = React.useState(settings.maxFine.toString());
@@ -38,6 +39,7 @@ export default function Settings() {
 
   React.useEffect(() => {
     setCurrency(settings.currency);
+    setLoanPeriod((settings.loanPeriod || 14).toString());
     setGracePeriod(settings.gracePeriod.toString());
     setFineRate(settings.fineRate.toString());
     setMaxFine(settings.maxFine.toString());
@@ -113,6 +115,7 @@ export default function Settings() {
       updateSettings({
         currency,
         currencySymbol: CURRENCY_SYMBOLS[currency] || '$',
+        loanPeriod: parseInt(loanPeriod) || 14,
         gracePeriod: parseInt(gracePeriod) || 0,
         fineRate: parseFloat(fineRate) || 0,
         maxFine: parseFloat(maxFine) || 0,
@@ -166,7 +169,7 @@ export default function Settings() {
             { id: 'categories', label: 'Categories & Genres', icon: List },
             { id: 'notifications', label: 'Notifications', icon: Bell },
             ...(role === 'Admin' ? [
-              { id: 'fines', label: 'Fines & Fees', icon: DollarSign },
+              { id: 'fines', label: 'Circulation & Fines', icon: DollarSign },
               { id: 'templates', label: 'Email Templates', icon: Mail },
             ] : []),
           ].map((tab) => (
@@ -600,8 +603,8 @@ export default function Settings() {
           {activeTab === 'fines' && role === 'Admin' && (
             <Card>
               <CardHeader>
-                <CardTitle>Fines & Fees Configuration</CardTitle>
-                <CardDescription>Manage daily fine rates and maximum accumulation limits.</CardDescription>
+                <CardTitle>Circulation & Fines Configuration</CardTitle>
+                <CardDescription>Manage checkout durations, daily fine rates, and limits.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -617,6 +620,10 @@ export default function Settings() {
                       <option value="GBP">GBP (£)</option>
                       <option value="INR">INR (₹)</option>
                     </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700">Loan Period (Days)</label>
+                    <Input type="number" value={loanPeriod} onChange={(e) => setLoanPeriod(e.target.value)} min="1" />
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Grace Period (Days)</label>

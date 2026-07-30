@@ -8,11 +8,15 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, Legend
 } from "recharts"
 
-import { fetchBooks, fetchMembers, fetchActivities } from "@/src/lib/db"
+import { fetchBooks, fetchMembers, fetchActivities, addNotification, sendMessage } from "@/src/lib/db"
+import { useAuth } from "@/src/lib/AuthContext"
+import { useSettings } from "@/src/lib/SettingsContext"
 
 const COLORS = ['#24B1B1', '#1E293B', '#64748B', '#CBD5E1'];
 
 export default function Dashboard() {
+  const { settings } = useSettings();
+  const { role } = useAuth();
   const [notified, setNotified] = React.useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = React.useState(new Date());
   const [activeUsers, setActiveUsers] = React.useState(42);
@@ -71,7 +75,7 @@ export default function Dashboard() {
            if (act.action === 'Check Out') {
               const coDate = new Date(act.date);
               const dDate = new Date(coDate);
-              dDate.setDate(dDate.getDate() + 14);
+              dDate.setDate(dDate.getDate() + (settings.loanPeriod || 14));
               bookStates.set(key, { ...act, dueDate: dDate.toISOString().split('T')[0], status: 'Active' });
            } else if (act.action === 'Renew') {
               const state = bookStates.get(key);
@@ -177,8 +181,22 @@ export default function Dashboard() {
     };
   }, []);
 
-  const handleNotify = (name: string) => {
-    setNotified(prev => new Set(prev).add(name));
+  const handleNotify = async (alert: any) => {
+    try {
+      const daysOverdue = Math.floor((new Date().getTime() - new Date(alert.dueDate).getTime()) / (1000 * 3600 * 24));
+      const fineEstimate = Math.min((settings.maxFine || 50), Math.max(0, daysOverdue - (settings.gracePeriod || 0)) * (settings.fineRate || 1));
+      const msg = `Your copy of "${alert.bookTitle}" was due on ${new Date(alert.dueDate).toLocaleDateString()}. It is ${daysOverdue} days overdue. Est. fine: ${settings.currencySymbol || '$'}${fineEstimate.toFixed(2)}.`;
+      await addNotification({
+        userId: alert.memberId,
+        title: 'Overdue Book Notice',
+        message: msg,
+        type: 'overdue'
+      });
+      await sendMessage(alert.memberId, msg, true, role as 'Admin' | 'Librarian');
+      setNotified(prev => new Set(prev).add(alert.memberName));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -381,7 +399,7 @@ export default function Dashboard() {
                           size="sm" 
                           variant={notified.has(alert.memberName) ? "secondary" : "outline"}
                           className="h-8 text-xs" 
-                          onClick={() => handleNotify(alert.memberName)}
+                          onClick={() => handleNotify(alert)}
                           disabled={notified.has(alert.memberName)}
                         >
                           {notified.has(alert.memberName) ? 'Notified' : 'Notify'}

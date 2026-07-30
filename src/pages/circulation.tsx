@@ -70,7 +70,7 @@ export default function Circulation() {
         if (act.action === 'Check Out') {
            const coDate = new Date(act.date);
            const dDate = new Date(coDate);
-           dDate.setDate(dDate.getDate() + 14);
+           dDate.setDate(dDate.getDate() + (settings.loanPeriod || 14));
            bookStates.set(key, {
               id: act.id,
               memberId: act.memberId,
@@ -180,7 +180,7 @@ export default function Circulation() {
 
     const today = new Date();
     const dueDate = new Date();
-    dueDate.setDate(today.getDate() + 14);
+    dueDate.setDate(today.getDate() + (settings.loanPeriod || 14));
 
     const newRecord: CheckoutRecord = {
       id: `CO-${Date.now()}`,
@@ -342,7 +342,9 @@ export default function Circulation() {
     if (dueDate < today) {
       const diffTime = Math.abs(today.getTime() - dueDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      fineCharged = Math.min(settings.maxFine, diffDays * settings.fineRate);
+      if (diffDays > (settings.gracePeriod || 0)) {
+        fineCharged = Math.min(settings.maxFine, diffDays * settings.fineRate);
+      }
     }
 
     if (fineCharged > 0) {
@@ -389,7 +391,7 @@ export default function Circulation() {
       await addNotification({
         userId: selectedMemberId,
         title: 'Book Checked In',
-        message: `You have successfully checked in "${recordToReturn.book.title}".${fineCharged > 0 ? ` A fine of $${fineCharged.toFixed(2)} was added to your account.` : ''}`,
+        message: `You have successfully checked in "${recordToReturn.book.title}".${fineCharged > 0 ? ` A fine of ${settings.currencySymbol}${fineCharged.toFixed(2)} was added to your account.` : ''}`,
         type: 'checkin'
       });
     }

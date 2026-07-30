@@ -91,11 +91,7 @@ export default function MemberCredentials() {
                 onClick={() => handleSelectMember(member)}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${selectedMember?.id === member.id ? 'bg-teal-50 text-[var(--color-primary)]' : 'hover:bg-slate-50'}`}
               >
-                <Avatar className="h-10 w-10 border shadow-sm">
-                  <div className="flex h-full w-full items-center justify-center bg-slate-100 text-sm font-bold text-slate-600">
-                    {(member.name || 'M').charAt(0).toUpperCase()}
-                  </div>
-                </Avatar>
+                <Avatar src={member.photoURL} fallback={member.name} className="h-10 w-10 border shadow-sm" />
                 <div className="overflow-hidden">
                   <div className="font-semibold text-sm truncate">{member.name}</div>
                   <div className={`text-xs truncate ${member.status === 'Active' && member.password ? 'text-green-600 font-medium' : 'text-slate-500'}`}>{member.email || 'No email'}</div>
@@ -109,11 +105,7 @@ export default function MemberCredentials() {
           {selectedMember ? (
             <div className="bg-white rounded-xl shadow-sm border p-6">
               <div className="flex items-center gap-4 mb-6 pb-6 border-b">
-                <Avatar className="h-16 w-16 border-2 shadow-sm">
-                  <div className="flex h-full w-full items-center justify-center bg-slate-100 text-2xl font-bold text-slate-600">
-                    {(selectedMember.name || 'M').charAt(0).toUpperCase()}
-                  </div>
-                </Avatar>
+                <Avatar src={selectedMember.photoURL} fallback={selectedMember.name} className="h-16 w-16 border-2 shadow-sm" />
                 <div>
                   <h3 className="text-xl font-bold">{selectedMember.name}</h3>
                   <p className="text-sm text-slate-500">ID: {selectedMember.id}</p>

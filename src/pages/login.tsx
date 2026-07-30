@@ -297,7 +297,7 @@ export default function Login() {
             
 
             <p className="text-center text-sm text-slate-500 mt-8">
-              Don't have an account? <a href="#" className="font-semibold text-[var(--color-primary)] hover:underline">Contact library admin</a>
+              Don't have an account? <a href={`mailto:${settings.libraryEmail || 'admin@library.com'}`} className="font-semibold text-[var(--color-primary)] hover:underline">Contact library admin</a>
             </p>
           </div>
         </div>

@@ -2,10 +2,11 @@ import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
+import { Avatar } from "@/src/components/ui/avatar"
 import { useSettings } from "@/src/lib/SettingsContext"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
-import { collection, getDocs, doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
+import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
 
 export default function StudentSettings() {
   const { settings, updateSettings } = useSettings();
@@ -16,6 +17,7 @@ export default function StudentSettings() {
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [studentClass, setStudentClass] = React.useState('');
+  const [photoURL, setPhotoURL] = React.useState('');
   
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -30,13 +32,11 @@ export default function StudentSettings() {
         
         const membersSnap = await getDocs(collection(db, 'members'));
         let matchedMember = null;
-
         const isEmailMatch = (email1: string, email2: string) => {
           if (!email1 || !email2) return false;
           const clean = (e: string) => e.toLowerCase().trim().replace('@gmai.com', '@gmail.com');
           return clean(email1) === clean(email2);
         };
-
         membersSnap.forEach(d => {
           const data = d.data();
           const safeId = d.id.replace(/[^a-zA-Z0-9]/g, '');
@@ -57,6 +57,7 @@ export default function StudentSettings() {
            setEmail((matchedMember as any).email || '');
            setPhone((matchedMember as any).phone || '');
            setStudentClass((matchedMember as any).studentClass || '');
+           setPhotoURL((matchedMember as any).photoURL || '');
         }
       } catch (error) {
         console.error(error);
@@ -76,12 +77,16 @@ export default function StudentSettings() {
     try {
       const memberRef = doc(db, 'members', memberInfo.id);
       await updateDoc(memberRef, {
-        name,
-        email,
-        phone,
-        studentClass
+        photoURL
       });
-      setMsg({ type: 'success', text: 'Profile updated successfully!' });
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        if (userDoc.exists()) {
+          await updateDoc(userRef, { photoURL });
+        }
+      }
+      setMsg({ type: 'success', text: 'Profile updated successfully! Refresh to see changes globally.' });
     } catch (error: any) {
       setMsg({ type: 'error', text: error.message });
     } finally {
@@ -119,27 +124,36 @@ export default function StudentSettings() {
                 </div>
               )}
               
+              <div className="flex items-center gap-4 mb-4">
+                <Avatar src={photoURL || undefined} fallback={name ? name.substring(0, 2).toUpperCase() : "U"} size="lg" className="h-16 w-16 text-lg" />
+                <div className="flex-1 space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Profile Photo URL</label>
+                  <Input value={photoURL} onChange={(e) => setPhotoURL(e.target.value)} placeholder="https://example.com/photo.jpg" />
+                </div>
+              </div>
+              
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Student ID</label>
                 <Input value={memberInfo?.id || ''} disabled className="bg-slate-50" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Full Name</label>
-                <Input value={name} onChange={e => setName(e.target.value)} required />
+                <Input value={name} disabled className="bg-slate-50" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Email Address</label>
-                <Input value={email} type="email" onChange={e => setEmail(e.target.value)} />
+                <Input value={email} type="email" disabled className="bg-slate-50" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Phone Number</label>
-                <Input value={phone} onChange={e => setPhone(e.target.value)} />
+                <Input value={phone} disabled className="bg-slate-50" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Class / Cohort</label>
-                <Input value={studentClass} onChange={e => setStudentClass(e.target.value)} />
+                <Input value={studentClass} disabled className="bg-slate-50" />
               </div>
-              <Button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] hover:bg-teal-600">
+
+              <Button type="submit" disabled={isSaving} className="w-full bg-[var(--color-primary)] hover:bg-teal-600 mt-4">
                  {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </form>

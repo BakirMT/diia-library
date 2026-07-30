@@ -186,6 +186,7 @@ export const fetchConversations = async (targetRole: 'Admin' | 'Librarian' = 'Ad
       timestamp: lastMsg ? lastMsg.timestamp : 0,
       unread: 0,
       online: member.status === 'Active',
+      photoURL: member.photoURL || undefined,
       avatar: member.fallback || (member.name ? member.name.substring(0, 2).toUpperCase() : '??')
     };
   });

@@ -8,10 +8,12 @@ import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
 import { collection, getDocs, doc, getDoc } from "firebase/firestore"
 import { Link } from "react-router-dom"
+import { useSettings } from "@/src/lib/SettingsContext"
 
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const [checkedOut, setCheckedOut] = React.useState<any[]>([]);
   const [overdue, setOverdue] = React.useState<any[]>([]);
   const [fines, setFines] = React.useState<any[]>([]);
@@ -62,7 +64,7 @@ export default function StudentDashboard() {
            if (act.action === 'Check Out') {
                const coDate = new Date(act.date);
                const dDate = new Date(coDate);
-               dDate.setDate(dDate.getDate() + 14);
+               dDate.setDate(dDate.getDate() + (settings.loanPeriod || 14));
                bookStates.set(act.bookTitle, {
                   title: act.bookTitle,
                   dueDate: dDate.toISOString().split('T')[0],
@@ -98,10 +100,16 @@ export default function StudentDashboard() {
               if (due < today) {
                   const diffTime = Math.abs(today.getTime() - due.getTime());
                   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  
+                  let fineEstimate = 0;
+                  if (diffDays > (settings.gracePeriod || 0)) {
+                     fineEstimate = Math.min(settings.maxFine || 20, diffDays * (settings.fineRate || 0.5));
+                  }
+                  
                   overdueBooks.push({
                       id: title, title, author: bookInfo.author, dueDate: state.dueDate,
                       cover: bookInfo.cover || bookInfo.imageUrl || 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=100&auto=format&fit=crop',
-                      daysOverdue: diffDays, fineEstimate: diffDays * 0.50
+                      daysOverdue: diffDays, fineEstimate: fineEstimate
                   });
               } else {
                   currentCheckouts.push({
@@ -183,7 +191,7 @@ export default function StudentDashboard() {
           <div className="flex items-start justify-between p-5">
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fines</p>
-              <h3 className="mt-1 text-2xl font-bold text-slate-900">{isLoading ? '-' : `${totalFinesAmt.toFixed(2)}`}</h3>
+              <h3 className="mt-1 text-2xl font-bold text-slate-900">{isLoading ? '-' : `${settings.currencySymbol}${totalFinesAmt.toFixed(2)}`}</h3>
             </div>
             <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
               <CreditCard className="h-5 w-5" />
@@ -249,7 +257,7 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                     <p className="font-bold text-red-600">${fine.amount.toFixed(2)}</p>
+                     <p className="font-bold text-red-600">{settings.currencySymbol}{fine.amount.toFixed(2)}</p>
                      <p className="text-[10px] text-red-500 font-semibold">{fine.status}</p>
                   </div>
                 </div>

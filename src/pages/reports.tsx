@@ -45,7 +45,7 @@ export default function Reports() {
       if (act.action === 'Check Out') {
         const coDate = new Date(act.date);
         const dDate = new Date(coDate);
-        dDate.setDate(dDate.getDate() + 14);
+        dDate.setDate(dDate.getDate() + (settings.loanPeriod || 14));
         bookStates.set(key, {
           memberId: act.memberId,
           memberName: act.memberName,
@@ -75,8 +75,11 @@ export default function Reports() {
     return activeLoans.map(state => {
       const dueDate = new Date(state.dueDate);
       const daysOverdue = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-      let fine = daysOverdue * settings.fineRate;
-      if (fine > settings.maxFine) fine = settings.maxFine;
+      let fine = 0;
+      if (daysOverdue > (settings.gracePeriod || 0)) {
+        fine = daysOverdue * settings.fineRate;
+        if (fine > settings.maxFine) fine = settings.maxFine;
+      }
       
       return {
         ...state,
@@ -84,31 +87,13 @@ export default function Reports() {
         fineAmount: fine
       };
     });
-  }, [activities, settings.fineRate, settings.maxFine]);
+  }, [activities, settings.fineRate, settings.maxFine, settings.gracePeriod, settings.loanPeriod]);
 
   const getCheckedOutBooks = () => checkedOutBooksData;
 
   const overdueBooksData = React.useMemo(() => {
-    return activities.filter(a => a.status === 'Overdue').map((item, index) => {
-      const checkoutDate = new Date(item.date);
-      const dueDate = new Date(checkoutDate.getTime() + 14 * 24 * 60 * 60 * 1000);
-      const today = new Date();
-      
-      let daysOverdue = Math.max(0, Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-      if (daysOverdue === 0 && item.status === 'Overdue') {
-        daysOverdue = (index % 10) + 1;
-      }
-      
-      let fine = daysOverdue * settings.fineRate;
-      if (fine > settings.maxFine) fine = settings.maxFine;
-      
-      return {
-        ...item,
-        daysOverdue,
-        fineAmount: fine
-      };
-    });
-  }, [activities, settings.fineRate, settings.maxFine]);
+    return checkedOutBooksData.filter(item => item.daysOverdue > 0);
+  }, [checkedOutBooksData]);
 
   const getOverdueBooks = () => overdueBooksData;
 
@@ -118,15 +103,16 @@ export default function Reports() {
 
   const getFinesReport = () => {
     // Generate fines based on overdue books
-    return getOverdueBooks();
+    return getOverdueBooks().filter(item => item.fineAmount > 0);
   };
 
   const handlePrintPdf = () => {
     const doc = new jsPDF();
+    const safeCurrency = settings.currencySymbol === "₹" ? "Rs." : (settings.currencySymbol === "€" ? "EUR " : (settings.currencySymbol === "£" ? "GBP " : settings.currencySymbol));
     
     // Add title
     doc.setFontSize(20);
-    doc.text("Libra Management System", 14, 22);
+    doc.text(settings.libraryName || "Library Management System", 14, 22);
     
     // Add subtitle
     doc.setFontSize(14);
@@ -146,7 +132,7 @@ export default function Reports() {
     let body: any[][] = [];
 
         if (reportType === 'checkedout') {
-      head = [["SI No", "Student ID", "Name", "Book Name", "Checked Out From", "Days Overdue", `Fine (${settings.currencySymbol})`]];
+      head = [["SI No", "Student ID", "Name", "Book Name", "Checked Out From", "Days Overdue", `Fine (${safeCurrency})`]];
       body = getCheckedOutBooks().map((item, index) => [
         (index + 1).toString(),
         item.memberId || '',
@@ -154,16 +140,16 @@ export default function Reports() {
         item.bookTitle || '',
         item.checkoutDate || '',
         item.daysOverdue > 0 ? `${item.daysOverdue} days` : '-',
-        item.fineAmount > 0 ? `${settings.currencySymbol}${item.fineAmount.toFixed(2)}` : '-'
+        item.fineAmount > 0 ? `${safeCurrency}${item.fineAmount.toFixed(2)}` : '-'
       ]);
     } else if (reportType === 'overdue') {
-      head = [["Member Name", "Book Title", "Due Date", "Days Overdue", `Fine Amount (${settings.currencySymbol})`]];
+      head = [["Member Name", "Book Title", "Due Date", "Days Overdue", `Fine Amount (${safeCurrency})`]];
       body = getOverdueBooks().map(item => [
         item.memberName,
         item.bookTitle,
-        new Date(new Date(item.date).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+        new Date(item.dueDate).toLocaleDateString(),
         `${item.daysOverdue} days`,
-        `${settings.currencySymbol}${item.fineAmount.toFixed(2)}`
+        `${safeCurrency}${item.fineAmount.toFixed(2)}`
       ]);
     } else if (reportType === 'inventory') {
       head = [["Book ID", "Title", "Author", "Category", "Available", "Total"]];
@@ -176,12 +162,12 @@ export default function Reports() {
         book.copiesTotal.toString()
       ]);
     } else if (reportType === 'fines') {
-      head = [["Member Name", "Book Title", "Due Date", `Fine Amount (${settings.currencySymbol})`]];
+      head = [["Member Name", "Book Title", "Due Date", `Fine Amount (${safeCurrency})`]];
       body = getFinesReport().map(item => [
         item.memberName,
         item.bookTitle,
-        new Date(new Date(item.date).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-        `${settings.currencySymbol}${item.fineAmount.toFixed(2)}`
+        new Date(item.dueDate).toLocaleDateString(),
+        `${safeCurrency}${item.fineAmount.toFixed(2)}`
       ]);
     }
 
@@ -241,7 +227,7 @@ export default function Reports() {
       <Card className="print:border-none print:shadow-none">
         <CardContent className="p-0">
           <div className="hidden print:block mb-8 text-center">
-            <h1 className="text-2xl font-bold text-slate-900 uppercase">Libra Management System</h1>
+            <h1 className="text-2xl font-bold text-slate-900 uppercase">{settings.libraryName || "Library Management System"}</h1>
             <h2 className="text-xl font-semibold text-slate-700 mt-2">
               {reportType === 'checkedout' && 'Checked Out Books Report'}
               {reportType === 'overdue' && 'Overdue Books Report'}
@@ -319,7 +305,7 @@ export default function Reports() {
                   <tr key={i} className="hover:bg-slate-50/50 print:hover:bg-transparent">
                     <td className="px-6 py-4 font-medium">{item.memberName}</td>
                     <td className="px-6 py-4">{item.bookTitle}</td>
-                    <td className="px-6 py-4 text-red-600">{new Date(new Date(item.date).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}</td>
+                    <td className="px-6 py-4 text-red-600">{new Date(item.dueDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right">{item.daysOverdue} days</td>
                     <td className="px-6 py-4 text-right font-bold text-red-600">{settings.currencySymbol}{item.fineAmount.toFixed(2)}</td>
                   </tr>
@@ -346,7 +332,7 @@ export default function Reports() {
                   <tr key={i} className="hover:bg-slate-50/50 print:hover:bg-transparent">
                     <td className="px-6 py-4 font-medium">{item.memberName}</td>
                     <td className="px-6 py-4">{item.bookTitle}</td>
-                    <td className="px-6 py-4">{new Date(new Date(item.date).getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{new Date(item.dueDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right font-bold text-red-600">{settings.currencySymbol}{item.fineAmount.toFixed(2)}</td>
                   </tr>
                 ))}

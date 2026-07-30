@@ -203,7 +203,7 @@ export default function Inbox() {
               }`}
             >
               <div className="relative shrink-0">
-                <Avatar fallback={conv.avatar} />
+                <Avatar src={conv.photoURL} fallback={conv.avatar} />
                 {conv.online && (
                   <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                 )}
@@ -243,7 +243,7 @@ export default function Inbox() {
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div className="relative">
-                  <Avatar fallback={activeConversation.avatar} />
+                  <Avatar src={activeConversation.photoURL} fallback={activeConversation.avatar} />
                   {activeConversation.online && (
                     <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                   )}
@@ -283,7 +283,7 @@ export default function Inbox() {
                     className={`flex max-w-[80%] ${msg.isSender ? 'ml-auto justify-end' : ''}`}
                   >
                     {!msg.isSender && (
-                      <Avatar fallback={activeConversation.avatar} size="sm" className="h-8 w-8 mr-2 shrink-0 mt-auto mb-1" />
+                      <Avatar src={activeConversation.photoURL} fallback={activeConversation.avatar} size="sm" className="h-8 w-8 mr-2 shrink-0 mt-auto mb-1" />
                     )}
                     <div className={`flex flex-col ${msg.isSender ? 'items-end' : 'items-start'}`}>
                       <div 

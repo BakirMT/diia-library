@@ -1,6 +1,8 @@
 import * as React from "react"
 import { AlertCircle, Search, Mail, ArrowRight, Library, BookOpen, Edit2, Trash2, X } from "lucide-react"
-import { fetchActivities, fetchMembers, fetchBooks, updateActivity, deleteActivity, addNotification } from "@/src/lib/db"
+import { fetchActivities, fetchMembers, fetchBooks, updateActivity, deleteActivity, addNotification, sendMessage } from "@/src/lib/db"
+import { useSettings } from "@/src/lib/SettingsContext"
+import { useAuth } from "@/src/lib/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
@@ -8,6 +10,8 @@ import { Avatar } from "@/src/components/ui/avatar"
 import { Link } from "react-router-dom"
 
 export default function Overdue() {
+  const { settings } = useSettings();
+  const { role } = useAuth();
   const [activities, setActivities] = React.useState<any[]>([])
   const [members, setMembers] = React.useState<any[]>([])
   const [books, setBooks] = React.useState<any[]>([])
@@ -35,7 +39,7 @@ export default function Overdue() {
       if (act.action === 'Check Out') {
          const coDate = new Date(act.date);
          const dDate = new Date(coDate);
-         dDate.setDate(dDate.getDate() + 14);
+         dDate.setDate(dDate.getDate() + (settings.loanPeriod || 14));
          bookStates.set(key, {
             id: act.id,
             memberId: act.memberId,
@@ -71,6 +75,12 @@ export default function Overdue() {
              const book = books.find(b => b.title === state.bookTitle);
              const diffTime = Math.abs(today.getTime() - due.getTime());
              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+             
+             let fineEstimate = 0;
+             if (diffDays > (settings.gracePeriod || 0)) {
+               fineEstimate = Math.min(settings.maxFine || 20, diffDays * (settings.fineRate || 0.5));
+             }
+             
              overdue.push({
                 ...state.originalActivity,
                 id: state.id,
@@ -81,7 +91,7 @@ export default function Overdue() {
                 bookTitle: state.bookTitle,
                 dueDate: state.dueDate,
                 daysOverdue: diffDays,
-                fineEstimate: diffDays * 0.50,
+                fineEstimate: fineEstimate,
                 status: 'Overdue'
              });
           }
@@ -89,7 +99,7 @@ export default function Overdue() {
     });
     
     return overdue;
-  }, [activities, members, books])
+  }, [activities, members, books, settings])
 
   const filteredOverdue = React.useMemo(() => {
     if (!searchTerm.trim()) return overdueActivities
@@ -104,12 +114,14 @@ export default function Overdue() {
     const activity = overdueActivities.find(a => a.id === id);
     if (!activity) return;
     try {
+      const msg = `Your copy of "${activity.bookTitle}" was due on ${new Date(activity.dueDate).toLocaleDateString()}. It is ${activity.daysOverdue} days overdue. Est. fine: ${settings.currencySymbol}${activity.fineEstimate.toFixed(2)}.`;
       await addNotification({
         userId: activity.memberId,
         title: 'Overdue Book Notice',
-        message: `Your copy of "${activity.bookTitle}" was due on ${new Date(activity.dueDate).toLocaleDateString()}. It is ${activity.daysOverdue} days overdue. Est. fine: $${activity.fineEstimate.toFixed(2)}.`,
+        message: msg,
         type: 'overdue'
       });
+      await sendMessage(activity.memberId, msg, true, role as 'Admin' | 'Librarian');
       setNotifiedRows(prev => new Set(prev).add(id));
     } catch (err) {
       console.error("Failed to send overdue notification:", err);
@@ -121,12 +133,14 @@ export default function Overdue() {
     for (const a of filteredOverdue) {
       if (!notifiedRows.has(a.id)) {
         try {
+          const msg = `Your copy of "${a.bookTitle}" was due on ${new Date(a.dueDate).toLocaleDateString()}. It is ${a.daysOverdue} days overdue. Est. fine: ${settings.currencySymbol}${a.fineEstimate.toFixed(2)}.`;
           await addNotification({
             userId: a.memberId,
             title: 'Overdue Book Notice',
-            message: `Your copy of "${a.bookTitle}" was due on ${new Date(a.dueDate).toLocaleDateString()}. It is ${a.daysOverdue} days overdue. Est. fine: $${a.fineEstimate.toFixed(2)}.`,
+            message: msg,
             type: 'overdue'
           });
+          await sendMessage(a.memberId, msg, true, role as 'Admin' | 'Librarian');
           newSet.add(a.id);
         } catch (err) {
           console.error("Failed to notify overdue for activity:", a.id, err);
@@ -226,11 +240,7 @@ export default function Overdue() {
                     <tr key={activity.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border bg-white">
-                            <div className="flex h-full w-full items-center justify-center font-bold text-slate-600 bg-slate-100">
-                              {(member.name || 'M').charAt(0).toUpperCase()}
-                            </div>
-                          </Avatar>
+                          <Avatar src={member?.photoURL} fallback={member?.name || 'M'} className="h-10 w-10 border bg-white" />
                           <div>
                             <p className="font-semibold text-slate-900">{activity.memberName}</p>
                             <p className="text-xs text-slate-500">{member.email || activity.memberId}</p>
@@ -260,7 +270,7 @@ export default function Overdue() {
                           Due: {new Date(activity.dueDate).toLocaleDateString()}
                         </p>
                         <p className="text-xs font-semibold text-slate-700 mt-0.5">
-                          Est. Fine: ${ (activity.fineEstimate || 0).toFixed(2) }
+                          Est. Fine: {settings.currencySymbol}{ (activity.fineEstimate || 0).toFixed(2) }
                         </p>
                       </td>
                       <td className="px-6 py-4 text-right space-x-2 flex justify-end">
