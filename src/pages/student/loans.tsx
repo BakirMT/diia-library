@@ -7,7 +7,7 @@ import { useSettings } from "@/src/lib/SettingsContext"
 import { db } from "@/src/lib/firebase"
 import { collection, getDocs, doc, getDoc, addDoc } from "firebase/firestore"
 import { Button } from "@/src/components/ui/button"
-import { sendMessage } from "@/src/lib/db"
+import { sendMessage, fetchFines } from "@/src/lib/db"
 
 export default function StudentLoans() {
   const { user } = useAuth();
@@ -194,19 +194,13 @@ export default function StudentLoans() {
            });
         });
         
-        // Fines logic (mock or derived from overdue)
-        const currentFines = overdueBooks.map((ob, idx) => ({
-            id: `fine-${idx}`,
-            reason: `Overdue: ${ob.title}`,
-            amount: ob.fineEstimate,
-            date: new Date().toISOString().split('T')[0],
-            status: 'Unpaid'
-        }));
         
         setCheckedOut(currentCheckouts);
         setOverdue(overdueBooks);
         setCheckedIn(returnedHistory.sort((a,b) => new Date(b.returned).getTime() - new Date(a.returned).getTime()));
-        setFines(currentFines);
+        const allFines = await fetchFines();
+        const myFines = allFines.filter(f => f.memberId === matchedMember.id);
+        setFines(myFines);
         
       } catch(err) {
          console.error("Failed to load member loans", err);

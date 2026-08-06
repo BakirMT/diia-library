@@ -504,3 +504,23 @@ export const addNotification = async (notification: {
     return null;
   }
 };
+
+export const fetchFines = async () => {
+  const querySnapshot = await getDocs(collection(db, "fines"));
+  const fines: any[] = [];
+  querySnapshot.forEach((doc) => {
+    fines.push({ ...doc.data(), id: doc.id });
+  });
+  return fines;
+};
+
+export const addFine = async (fine: any) => {
+  const docRef = await addDoc(collection(db, "fines"), fine);
+  return { id: docRef.id, ...fine };
+};
+
+export const updateFine = async (id: string, updates: any) => {
+  const fineRef = doc(db, "fines", id);
+  await updateDoc(fineRef, updates);
+};
+

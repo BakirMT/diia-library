@@ -10,7 +10,7 @@ import { Avatar } from "@/src/components/ui/avatar"
 import { AddMemberModal } from "@/src/components/members/add-member-modal"
 import { BulkImportModal } from "@/src/components/shared/bulk-import-modal"
 import { useNavigate } from "react-router-dom"
-import { fetchMembers, addMember, updateMember, deleteMember, fetchActivities, addNotification } from "@/src/lib/db"
+import { fetchMembers, addMember, updateMember, deleteMember, fetchActivities, addNotification, fetchFines, updateFine } from "@/src/lib/db"
 
 export default function Members() {
   const { settings } = useSettings();
@@ -57,8 +57,18 @@ export default function Members() {
       const amount = parseFloat(paymentAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid payment amount");
       
-      const newFinesDue = Math.max(0, payingFineMember.finesDue - amount);
+            const newFinesDue = Math.max(0, payingFineMember.finesDue - amount);
       await updateMember(payingFineMember.id, { finesDue: newFinesDue });
+      
+      const allFines = await fetchFines();
+      const memberFines = allFines.filter(f => f.memberId === payingFineMember.id && f.status === 'Unpaid');
+      // Simple logic: if fully paid, mark all as paid
+      if (newFinesDue === 0) {
+        for (const f of memberFines) {
+           await updateFine(f.id, { status: 'Paid' });
+        }
+      }
+
       
       await addNotification({
         userId: payingFineMember.id,

@@ -9,6 +9,7 @@ import { db } from "@/src/lib/firebase"
 import { collection, getDocs, doc, getDoc } from "firebase/firestore"
 import { Link } from "react-router-dom"
 import { useSettings } from "@/src/lib/SettingsContext"
+import { fetchFines } from "@/src/lib/db"
 
 
 export default function StudentDashboard() {
@@ -49,6 +50,7 @@ export default function StudentDashboard() {
             matchedMember = { id: d.id, ...data };
           }
         });
+
         
         if (!matchedMember) { setIsLoading(false); return; }
         setMemberInfo(matchedMember);
@@ -70,6 +72,7 @@ export default function StudentDashboard() {
                   dueDate: dDate.toISOString().split('T')[0],
                   status: 'Active',
                });
+
            } else if (act.action === 'Renew') {
                const state = bookStates.get(act.bookTitle);
                if (state && state.status === 'Active') {
@@ -82,6 +85,7 @@ export default function StudentDashboard() {
                if (state) state.status = 'Returned';
            }
         });
+
         
         const booksSnap = await getDocs(collection(db, 'books'));
         const booksMap = new Map();
@@ -111,34 +115,42 @@ export default function StudentDashboard() {
                       cover: bookInfo.cover || bookInfo.imageUrl || 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=100&auto=format&fit=crop',
                       daysOverdue: diffDays, fineEstimate: fineEstimate
                   });
+
               } else {
                   currentCheckouts.push({
                       id: title, title, author: bookInfo.author, dueDate: state.dueDate,
                       cover: bookInfo.cover || bookInfo.imageUrl || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=100&auto=format&fit=crop',
                   });
+
               }
            }
         });
-        
-        const currentFines = overdueBooks.map((ob, idx) => ({
-            id: `fine-${idx}`, reason: `Overdue: ${ob.title}`, amount: ob.fineEstimate,
-            date: new Date().toISOString().split('T')[0], status: 'Unpaid'
-        }));
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         setCheckedOut(currentCheckouts);
         setOverdue(overdueBooks);
-        
-        // Include manually added fines from member info if they have a flat fine
-        if (matchedMember.finesDue > 0) {
-           const manualFinesAmt = matchedMember.finesDue - currentFines.reduce((sum, f) => sum + f.amount, 0);
-           if (manualFinesAmt > 0) {
-               currentFines.push({
-                  id: 'manual-fine', reason: 'Account Balance', amount: manualFinesAmt,
-                  date: new Date().toISOString().split('T')[0], status: 'Unpaid'
-               });
-           }
-        }
-        setFines(currentFines);
+
+        const allFines = await fetchFines();
+        const myFines = allFines.filter(f => f.memberId === matchedMember.id);
+        setFines(myFines);
         
       } catch(err) {
          console.error(err);
@@ -246,9 +258,9 @@ export default function StudentDashboard() {
           <CardContent>
             <div className="space-y-4">
               {fines.slice(0, 4).map(fine => (
-                <div key={fine.id} className="flex items-center justify-between p-4 rounded-xl border border-red-100 bg-red-50/50">
+                <div key={fine.id} className={`flex items-center justify-between p-4 rounded-xl border ${fine.status === 'Paid' ? 'border-green-100 bg-green-50/50' : 'border-red-100 bg-red-50/50'}`}>
                   <div className="flex items-center gap-4">
-                    <div className="rounded-lg bg-red-100 p-2 text-red-600">
+                    <div className={`rounded-lg p-2 ${fine.status === 'Paid' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                       <CreditCard className="h-5 w-5" />
                     </div>
                     <div>
@@ -257,8 +269,8 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                     <p className="font-bold text-red-600">{settings.currencySymbol}{fine.amount.toFixed(2)}</p>
-                     <p className="text-[10px] text-red-500 font-semibold">{fine.status}</p>
+                     <p className={`font-bold ${fine.status === 'Paid' ? 'text-green-600' : 'text-red-600'}`}>{settings.currencySymbol}{fine.amount.toFixed(2)}</p>
+                     <p className={`text-[10px] font-semibold ${fine.status === 'Paid' ? 'text-green-500' : 'text-red-500'}`}>{fine.status}</p>
                   </div>
                 </div>
               ))}

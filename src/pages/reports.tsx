@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/src/components/ui/card"
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 import { useSettings } from "@/src/lib/SettingsContext"
-import { fetchActivities, fetchBooks } from "@/src/lib/db"
+import { fetchActivities, fetchBooks, fetchFines } from "@/src/lib/db"
 
 export default function Reports() {
   const { settings } = useSettings();
@@ -13,18 +13,21 @@ export default function Reports() {
 
   const [books, setBooks] = React.useState<any[]>([]);
   const [activities, setActivities] = React.useState<any[]>([]);
+  const [fines, setFines] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [booksData, activitiesData] = await Promise.all([
+        const [booksData, activitiesData, finesData] = await Promise.all([
           fetchBooks(),
-          fetchActivities()
+          fetchActivities(),
+          fetchFines()
         ]);
         setBooks(booksData);
         setActivities(activitiesData);
+        setFines(finesData);
       } catch (err) {
         console.error("Failed to load report data", err);
       } finally {
@@ -102,8 +105,13 @@ export default function Reports() {
   };
 
   const getFinesReport = () => {
-    // Generate fines based on overdue books
-    return getOverdueBooks().filter(item => item.fineAmount > 0);
+    return fines.map(f => ({
+      memberName: f.memberName || 'Unknown',
+      bookTitle: f.reason || 'Fine',
+      dueDate: f.date,
+      fineAmount: f.amount,
+      status: f.status
+    }));
   };
 
   const handlePrintPdf = () => {
@@ -333,7 +341,12 @@ export default function Reports() {
                     <td className="px-6 py-4 font-medium">{item.memberName}</td>
                     <td className="px-6 py-4">{item.bookTitle}</td>
                     <td className="px-6 py-4">{new Date(item.dueDate).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right font-bold text-red-600">{settings.currencySymbol}{item.fineAmount.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-right font-bold text-slate-900">{settings.currencySymbol}{item.fineAmount.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {item.status}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Search, BookUp, BookDown, CheckCircle2, User, Library, Clock, RotateCw, X, Trash2 } from "lucide-react"
-import { fetchMembers, fetchBooks, addActivity, fetchActivities, fetchReservations, updateBook, addNotification, updateMember, updateActivity } from "@/src/lib/db"
+import { fetchMembers, fetchBooks, addActivity, fetchActivities, fetchReservations, updateBook, addNotification, updateMember, updateActivity, addFine } from "@/src/lib/db"
 import { useSettings } from "@/src/lib/SettingsContext"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
@@ -353,6 +353,7 @@ export default function Circulation() {
         const updatedFines = currentFines + fineCharged;
         await updateMember(selectedMemberId, { finesDue: updatedFines });
         setMembers(prev => prev.map(m => m.id === selectedMemberId ? { ...m, finesDue: updatedFines } : m));
+        await addFine({ memberId: selectedMemberId, memberName: selectedMember?.name || 'Unknown', reason: `Overdue check-in: ${recordToReturn.book.title}`, amount: fineCharged, date: new Date().toISOString(), status: 'Unpaid' });
       } catch (err) {
         console.error("Failed to update member fines on check in", err);
       }
