@@ -14,7 +14,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ onMenuClick }: TopbarProps) {
-  const { user, role, profile, logout } = useAuth();
+  const {  user, role, profile, logout , libraryId } = useAuth();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [showResults, setShowResults] = React.useState(false);
@@ -32,7 +32,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   React.useEffect(() => {
     fetchBooks().then(setAllBooks);
     fetchMembers().then(setAllMembers);
-  }, []);
+  }, [libraryId]);
 
   const filteredBooks = React.useMemo(() => {
     if (!searchQuery.trim()) return [];

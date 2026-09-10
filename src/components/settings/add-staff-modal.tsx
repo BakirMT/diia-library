@@ -6,9 +6,9 @@ export interface StaffMember {
   id: string;
   name: string;
   username: string;
-  email: string;
   role: string;
   status: string;
+  password?: string;
 }
 
 interface AddStaffModalProps {
@@ -21,22 +21,20 @@ interface AddStaffModalProps {
 export function AddStaffModal({ isOpen, onClose, onSave, initialData }: AddStaffModalProps) {
   const [name, setName] = React.useState('');
   const [username, setUsername] = React.useState('');
-  const [email, setEmail] = React.useState('');
-  const [role, setRole] = React.useState('Librarian');
+  const [password, setPassword] = React.useState('');
   const [status, setStatus] = React.useState('Active');
+  const role = 'Librarian';
 
   React.useEffect(() => {
     if (initialData) {
       setName(initialData.name);
       setUsername(initialData.username);
-      setEmail(initialData.email);
-      setRole(initialData.role);
       setStatus(initialData.status);
+      setPassword(initialData.password || '');
     } else {
       setName('');
       setUsername('');
-      setEmail('');
-      setRole('Librarian');
+      setPassword('');
       setStatus('Active');
     }
   }, [initialData, isOpen]);
@@ -46,7 +44,7 @@ export function AddStaffModal({ isOpen, onClose, onSave, initialData }: AddStaff
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
-        <h2 className="text-xl font-bold mb-4">{initialData ? 'Edit Staff' : 'Add Staff'}</h2>
+        <h2 className="text-xl font-bold mb-4">{initialData ? 'Edit Librarian' : 'Add Librarian'}</h2>
         <div className="space-y-4">
           <div>
             <label className="text-sm font-medium text-slate-700">Name</label>
@@ -57,16 +55,12 @@ export function AddStaffModal({ isOpen, onClose, onSave, initialData }: AddStaff
             <Input value={username} onChange={e => setUsername(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">Email</label>
-            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <label className="text-sm font-medium text-slate-700">Password</label>
+            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="Required for login" />
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Role</label>
-            <select value={role} onChange={e => setRole(e.target.value)} className="w-full h-10 rounded-md border border-slate-300 px-3 py-2 text-sm">
-              <option value="Admin">Admin</option>
-              <option value="Librarian">Librarian</option>
-              <option value="Assistant">Assistant</option>
-            </select>
+            <Input value="Librarian" readOnly className="bg-slate-50 text-slate-500 cursor-not-allowed" />
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Status</label>
@@ -79,7 +73,11 @@ export function AddStaffModal({ isOpen, onClose, onSave, initialData }: AddStaff
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={() => {
-            onSave({ name, username, email, role, status });
+            if(!name || !username || (!initialData && !password)) {
+               alert("Please fill all required fields");
+               return;
+            }
+            onSave({ name, username, password, role, status });
             onClose();
           }}>Save</Button>
         </div>

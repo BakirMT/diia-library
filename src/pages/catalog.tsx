@@ -13,7 +13,7 @@ import { AddBookModal } from "@/src/components/books/add-book-modal"
 
 
 export default function StudentCatalog() {
-  const { user, profile } = useAuth();
+  const {  user, profile , libraryId } = useAuth();
   
   const handleReserve = async (book: any) => {
     if (!user) {
@@ -135,7 +135,7 @@ export default function StudentCatalog() {
       });
       setCurrentCheckoutsByTitle(byTitle);
     });
-  }, []);
+  }, [libraryId]);
   
   const allCategories = React.useMemo(() => {
     return Array.from(new Set(books.map(b => b.category).filter(Boolean))).sort();

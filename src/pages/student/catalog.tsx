@@ -6,11 +6,11 @@ import { Search, Filter, BookOpen } from "lucide-react"
 import { fetchBooks, addReservation, updateBook, addNotification, sendMessage, fetchActivities } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
-import { doc, getDoc, collection, getDocs } from "firebase/firestore"
+import { doc, getDoc, collection, collectionGroup, getDocs } from "firebase/firestore"
 import { Badge } from "@/src/components/ui/badge"
 
 export default function StudentCatalog() {
-  const { user, profile } = useAuth();
+  const {  user, profile , libraryId } = useAuth();
   
   const handleReserve = async (book: any) => {
     if (!user) {
@@ -28,7 +28,7 @@ export default function StudentCatalog() {
       const userData = userDoc.exists() ? userDoc.data() : null;
       let memberId = user.uid;
       
-      const membersSnap = await getDocs(collection(db, 'members'));
+      const membersSnap = await getDocs(collectionGroup(db, 'members'));
 
       const isEmailMatch = (email1: string, email2: string) => {
         if (!email1 || !email2) return false;
@@ -125,7 +125,7 @@ export default function StudentCatalog() {
       });
       setCurrentCheckoutsByTitle(byTitle);
     });
-  }, []);
+  }, [libraryId]);
   
   const allCategories = React.useMemo(() => {
     return Array.from(new Set(books.map(b => b.category).filter(Boolean))).sort();

@@ -1,10 +1,10 @@
 import * as React from "react"
 import { doc, setDoc } from "firebase/firestore"
 import { db } from "@/src/lib/firebase"
-import { fetchMembers } from "@/src/lib/db"
+import { fetchMembers, updateMember } from "@/src/lib/db"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
-import { Search, Key, CheckCircle, Shield } from "lucide-react"
+import { Search, Key, CheckCircle, Shield, Eye, EyeOff } from "lucide-react"
 import { Avatar } from "@/src/components/ui/avatar"
 
 export default function MemberCredentials() {
@@ -17,6 +17,7 @@ export default function MemberCredentials() {
   const [password, setPassword] = React.useState("")
   const [status, setStatus] = React.useState("Active")
   const [isSaving, setIsSaving] = React.useState(false)
+  const [showPassword, setShowPassword] = React.useState(false)
 
   React.useEffect(() => {
     const loadMembers = async () => {
@@ -46,13 +47,12 @@ export default function MemberCredentials() {
     setIsSaving(true)
     
     try {
-      const memberRef = doc(db, 'members', selectedMember.id)
-      await setDoc(memberRef, {
+      await updateMember(selectedMember.id, {
         username,
         email,
         password,
         status
-      }, { merge: true })
+      })
       
       // Update local state
       setMembers(prev => prev.map(m => m.id === selectedMember.id ? { ...m, username, email, password, status } : m))
@@ -136,13 +136,23 @@ export default function MemberCredentials() {
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Password</label>
-                  <Input 
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Set a password"
-                    required
-                  />
+                  <div className="relative">
+                    <Input 
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Set a password"
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-500">This password will only work on the Member login page.</p>
                 </div>
 

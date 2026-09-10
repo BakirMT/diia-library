@@ -3,10 +3,14 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/AuthContext';
 import { Layout } from './components/layout/layout';
 import { StudentLayout } from './components/layout/student-layout';
+import SuperAdmin from './pages/superadmin';
+import Suspended from './pages/suspended';
+import AdminLogin from './pages/admin-login';
 import { SettingsProvider } from './lib/SettingsContext';
 import Dashboard from './pages/dashboard';
 import Books from './pages/books';
 import Members from './pages/members';
+import Fines from './pages/fines';
 import Settings from './pages/settings';
 import MemberCredentials from './pages/member-credentials';
 import Activity from './pages/activity';
@@ -47,7 +51,10 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
       return <Navigate to="/login" replace />;
     }
     if (!allowedRoles.includes(role)) {
+      if (role === 'Suspended') return <Navigate to="/suspended" replace />;
       if (role === 'Member') return <Navigate to="/student" replace />;
+      if (role === 'SuperAdmin') return <Navigate to="/superadmin" replace />;
+
       return <Navigate to="/" replace />;
     }
   }
@@ -63,7 +70,10 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (user && role) {
+    if (role === 'Suspended') return <Navigate to="/suspended" replace />;
+    if (role === 'SuperAdmin') return <Navigate to="/superadmin" replace />;
     if (role === 'Member') return <Navigate to="/student" replace />;
+
     if (role === 'Librarian' || role === 'Admin') return <Navigate to="/" replace />;
   }
 
@@ -78,6 +88,10 @@ export default function App() {
         <BrowserRouter>
           <Routes>
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/admin" element={<PublicRoute><AdminLogin /></PublicRoute>} />
+          <Route path="/superadmin" element={<ProtectedRoute allowedRoles={['SuperAdmin']}><SuperAdmin /></ProtectedRoute>} />
+          <Route path="/suspended" element={<Suspended />} />
+
           <Route path="/student" element={<ProtectedRoute allowedRoles={['Member']}><StudentLayout /></ProtectedRoute>}>
             <Route index element={<StudentDashboard />} />
             <Route path="catalog" element={<StudentCatalog />} />
@@ -92,6 +106,7 @@ export default function App() {
             <Route path="books" element={<Books />} />
             <Route path="catalog" element={<AdminCatalog />} />
             <Route path="members" element={<Members />} />
+            <Route path="fines" element={<Fines />} />
             <Route path="circulation" element={<Circulation />} />
             <Route path="reservations" element={<AdminReservations />} />
             <Route path="overdue" element={<Overdue />} />
@@ -101,6 +116,7 @@ export default function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="credentials" element={<MemberCredentials />} />
           </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
       </AuthProvider>

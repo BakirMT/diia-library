@@ -15,7 +15,8 @@ import {
   Key,
   AlertTriangle,
   Search,
-  Bookmark
+  Bookmark,
+  CreditCard
 } from "lucide-react"
 import { Button } from "@/src/components/ui/button"
 import { collection, query, where, onSnapshot } from "firebase/firestore"
@@ -27,6 +28,7 @@ const navItems = [
   { name: 'Books', path: '/books', icon: Library },
   { name: 'Browse Catalog', path: '/catalog', icon: Search },
   { name: 'Members', path: '/members', icon: Users },
+  { name: 'Fines', path: '/fines', icon: CreditCard },
   { name: 'Circulation', path: '/circulation', icon: ArrowLeftRight },
   { name: 'Reservations', path: '/reservations', icon: Bookmark },
   { name: 'Overdue', path: '/overdue', icon: AlertTriangle },

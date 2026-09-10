@@ -4,12 +4,12 @@ import { Button } from "@/src/components/ui/button"
 import { Bookmark, Clock, CheckCircle2 } from "lucide-react"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
-import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore"
+import { doc, getDoc, collection, collectionGroup, getDocs, query, where } from "firebase/firestore"
 import { fetchReservationsByMember, deleteReservation, updateBook, fetchActivities } from "@/src/lib/db"
 
 
 export default function StudentReservations() {
-  const { user } = useAuth();
+  const {  user , libraryId } = useAuth();
   const [reservations, setReservations] = React.useState<any[]>([]);
   const [currentCheckoutsByTitle, setCurrentCheckoutsByTitle] = React.useState<Map<string, string[]>>(new Map());
   const [isLoading, setIsLoading] = React.useState(true);
@@ -59,7 +59,7 @@ export default function StudentReservations() {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         const userData = userDoc.exists() ? userDoc.data() : null;
         
-        const membersSnap = await getDocs(collection(db, 'members'));
+        const membersSnap = await getDocs(collectionGroup(db, 'members'));
         const membersMap = new Map<string, any>();
         let memberId = user.uid;
 

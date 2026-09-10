@@ -108,7 +108,8 @@ export default function Reports() {
     return fines.map(f => ({
       memberName: f.memberName || 'Unknown',
       bookTitle: f.reason || 'Fine',
-      dueDate: f.date,
+      dueDate: f.startDate || f.date,
+      returnDate: f.endDate || f.date,
       fineAmount: f.amount,
       status: f.status
     }));
@@ -170,11 +171,12 @@ export default function Reports() {
         book.copiesTotal.toString()
       ]);
     } else if (reportType === 'fines') {
-      head = [["Member Name", "Book Title", "Due Date", `Fine Amount (${safeCurrency})`]];
+      head = [["Member Name", "Book Title", "Due Date", "Return Date", `Fine Amount (${safeCurrency})`]];
       body = getFinesReport().map(item => [
         item.memberName,
         item.bookTitle,
         new Date(item.dueDate).toLocaleDateString(),
+        new Date(item.returnDate).toLocaleDateString(),
         `${safeCurrency}${item.fineAmount.toFixed(2)}`
       ]);
     }
@@ -281,6 +283,7 @@ export default function Reports() {
                     <th className="px-6 py-4 font-bold">Member Name</th>
                     <th className="px-6 py-4 font-bold">Book Title</th>
                     <th className="px-6 py-4 font-bold">Due Date</th>
+                    <th className="px-6 py-4 font-bold">Return Date</th>
                     <th className="px-6 py-4 font-bold text-right">Fine Amount ({settings.currencySymbol})</th>
                   </tr>
                 )}
@@ -341,6 +344,7 @@ export default function Reports() {
                     <td className="px-6 py-4 font-medium">{item.memberName}</td>
                     <td className="px-6 py-4">{item.bookTitle}</td>
                     <td className="px-6 py-4">{new Date(item.dueDate).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">{new Date(item.returnDate).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right font-bold text-slate-900">{settings.currencySymbol}{item.fineAmount.toFixed(2)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

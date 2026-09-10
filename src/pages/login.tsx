@@ -2,7 +2,7 @@ import * as React from "react"
 
 import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from "firebase/auth";
 import { auth, db } from "@/src/lib/firebase";
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs, collectionGroup } from "firebase/firestore";
 
 import { useNavigate } from "react-router-dom"
 import { BookOpen, User, Shield, GraduationCap, ArrowRight, Mail, Lock } from "lucide-react"
@@ -23,21 +23,24 @@ export default function Login() {
 
   React.useEffect(() => {
     if (activeRole === 'Member') {
-      setUsernameOrEmail('bakirmannarkkad170@gmail.com'); // or member@example.com
-      setPassword('123');
-    } else if (activeRole === 'Librarian') {
-      setUsernameOrEmail('librarian'); // or librarian@example.com
-      setPassword('password123');
-    } else if (activeRole === 'Admin') {
-      setUsernameOrEmail('admindiia2014');
-      setPassword('Admin@diia2014');
+      setUsernameOrEmail('');
+      setPassword('');
+
+    } else if (activeRole === 'Admin' || activeRole === 'Librarian') {
+      setUsernameOrEmail('');
+      setPassword('');
+    } else {
+      setUsernameOrEmail('');
+      setPassword('');
     }
+
   }, [activeRole]);
 
 
   const handleRoleRouting = (role: Role) => {
     if (role === 'Member') {
-      navigate('/student'); // Assuming /student is the member route based on previous code
+      navigate('/student');
+
     } else {
       navigate('/');
     }
@@ -58,13 +61,15 @@ export default function Login() {
       let username = usernameOrEmail.includes('@') ? usernameOrEmail.split('@')[0] : usernameOrEmail;
       
       let memberCustomPassword = null;
+      let matchedLibraryId = null;
       if (activeRole === 'Member') {
-        const membersRef = collection(db, 'members');
+        const membersRef = collectionGroup(db, 'members');
         const querySnapshot = await getDocs(membersRef);
         
         const searchValue = usernameOrEmail.toLowerCase().trim();
         let matchedDoc = null;
         let matchedId = null;
+        let matchedDocRef = null;
         
         querySnapshot.forEach(doc => {
           const data = doc.data();
@@ -75,6 +80,7 @@ export default function Login() {
           ) {
             matchedDoc = data;
             matchedId = doc.id;
+            matchedDocRef = doc.ref;
           }
         });
         
@@ -83,6 +89,10 @@ export default function Login() {
         }
         
         const memberDoc = matchedDoc;
+        // The path will be libraries/{libraryId}/members/{memberId}
+        if (matchedDocRef) {
+          matchedLibraryId = matchedDocRef.parent.parent.id;
+        }
         if (memberDoc.status === 'Suspended') {
           throw new Error("Your account has been suspended. Please contact the administrator.");
         }
@@ -101,30 +111,73 @@ export default function Login() {
         } else {
           throw new Error("Your account has not been set up with a password. Please contact the administrator.");
         }
-      } else if (activeRole === 'Admin') {
-        if (
-          (usernameOrEmail !== 'admindiia2014' && usernameOrEmail !== 'admindiialibrary@2014' && usernameOrEmail !== 'admindiialibrary@2014.com') ||
-          password !== 'Admin@diia2014'
-        ) {
-          throw new Error("Invalid admin credentials.");
+
+      } else if (activeRole === 'Admin' || false) {
+        // For Library Admin
+        const isEmail = usernameOrEmail.includes('@');
+        const libsRef = collection(db, 'libraries');
+        
+        let q;
+        if (isEmail) {
+           q = query(libsRef, where('adminEmail', '==', usernameOrEmail));
+        } else {
+           q = query(libsRef, where('adminUsername', '==', usernameOrEmail));
         }
-        loginEmail = 'admindiialibrary@2014.com';
+        
+        const snap = await getDocs(q);
+        
+        let valid = false;
+        if (!snap.empty) {
+           const libData = snap.docs[0].data();
+           if (libData.adminPassword === password) {
+              loginEmail = libData.adminEmail; // Use the actual email for auth
+              matchedLibraryId = snap.docs[0].id;
+              valid = true;
+           }
+        }
+        
+
+
+        if (!valid) {
+           throw new Error("Invalid library admin credentials.");
+        }
         memberName = 'Admin';
       } else {
         // For Librarian
-        if (!usernameOrEmail.includes('@')) {
-          if (usernameOrEmail === 'librarian') loginEmail = 'librarian@example.com';
-          else {
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('username', '==', usernameOrEmail), where('role', '==', activeRole));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-              loginEmail = querySnapshot.docs[0].data().email;
-            } else {
-              loginEmail = `${usernameOrEmail}@example.com`;
-            }
+        const libRef = collectionGroup(db, 'librarians');
+        const querySnapshot = await getDocs(libRef);
+        
+        const searchValue = usernameOrEmail.toLowerCase().trim();
+        let matchedDoc = null;
+        
+        querySnapshot.forEach(doc => {
+          const data = doc.data();
+          if (
+            (data.username && data.username.toLowerCase().trim() === searchValue) ||
+            (data.email && data.email.toLowerCase().trim() === searchValue)
+          ) {
+            matchedDoc = data;
+            matchedDoc.ref = doc.ref;
           }
+        });
+        
+        if (!matchedDoc) {
+          throw new Error("Librarian account not found. Please contact the administrator.");
         }
+        
+        if (matchedDoc.status !== 'Active') {
+          throw new Error("Librarian account is currently inactive.");
+        }
+
+        if (matchedDoc.password !== password) {
+          throw new Error("Invalid password.");
+        }
+        
+        memberName = matchedDoc.name || 'Librarian';
+        if (matchedDoc.ref && matchedDoc.ref.parent && matchedDoc.ref.parent.parent) {
+          matchedLibraryId = matchedDoc.ref.parent.parent.id;
+        }
+        loginEmail = `${matchedLibraryId}-${matchedDoc.username}@librarian.local`;
       }
       
       let user;
@@ -132,6 +185,8 @@ export default function Login() {
         let firebasePassword = password;
         if (activeRole === 'Member') {
            firebasePassword = loginEmail + "_secret";
+        } else if (activeRole === 'Admin' || activeRole === 'Librarian') {
+           firebasePassword = "LibraryAdmin123!"; // Static password for auth bypass
         } else {
            firebasePassword = password.length < 6 ? password.padEnd(6, '_') : password;
         }
@@ -143,6 +198,8 @@ export default function Login() {
           let firebasePassword = password;
           if (activeRole === 'Member') {
              firebasePassword = loginEmail + "_secret";
+          } else if (activeRole === 'Admin' || activeRole === 'Librarian') {
+             firebasePassword = "LibraryAdmin123!";
           } else {
              firebasePassword = password.length < 6 ? password.padEnd(6, '_') : password;
           }
@@ -156,19 +213,23 @@ export default function Login() {
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
-        await setDoc(userRef, {
+        const userData: any = {
           name: memberName || user.displayName || 'Member',
           username: username,
           email: user.email || loginEmail,
           role: activeRole,
           createdAt: new Date().toISOString()
-        });
+        };
+        if (matchedLibraryId) userData.libraryId = matchedLibraryId;
+        await setDoc(userRef, userData);
       } else {
-        await setDoc(userRef, {
+        const updateData: any = {
           name: memberName || user.displayName || 'Member',
           username: username,
           role: activeRole
-        }, { merge: true });
+        };
+        if (matchedLibraryId) updateData.libraryId = matchedLibraryId;
+        await setDoc(userRef, updateData, { merge: true });
       }
 
       if (user && memberName && user.displayName !== memberName) { await updateProfile(user, { displayName: memberName }); }
@@ -182,10 +243,10 @@ export default function Login() {
 
 
   const roles = [
-    { id: 'Member', icon: GraduationCap, label: 'Member', desc: 'Browse & Reserve' },
+    { id: 'Member', icon: GraduationCap, label: 'Student', desc: 'Browse & Reserve' },
     { id: 'Librarian', icon: User, label: 'Librarian', desc: 'Manage & Assist' },
-    { id: 'Admin', icon: Shield, label: 'Admin', desc: 'System Control' },
-  ];
+    { id: 'Admin', icon: Shield, label: 'Library Admin', desc: 'Manage Branch' }
+  ] as { id: Role; icon: any; label: string; desc: string }[];
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">

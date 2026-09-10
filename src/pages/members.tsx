@@ -1,4 +1,5 @@
 import { useSettings } from "@/src/lib/SettingsContext"
+import { useAuth } from "@/src/lib/AuthContext"
 import * as React from "react"
 import { Plus, Search, Filter, Edit2, Trash2, Mail, Phone, Upload, Download, MessageSquare, CreditCard } from "lucide-react"
 import { exportToCSV } from "@/src/lib/export"
@@ -8,12 +9,14 @@ import { Input } from "@/src/components/ui/input"
 import { Badge } from "@/src/components/ui/badge"
 import { Avatar } from "@/src/components/ui/avatar"
 import { AddMemberModal } from "@/src/components/members/add-member-modal"
+import { MemberDetailsModal } from "@/src/components/members/member-details-modal"
 import { BulkImportModal } from "@/src/components/shared/bulk-import-modal"
 import { useNavigate } from "react-router-dom"
-import { fetchMembers, addMember, updateMember, deleteMember, fetchActivities, addNotification, fetchFines, updateFine } from "@/src/lib/db"
+import { fetchMembers, addMember, updateMember, deleteMember, fetchActivities, addNotification, fetchFines, updateFine, deleteFine } from "@/src/lib/db"
 
 export default function Members() {
   const { settings } = useSettings();
+  const {  role , libraryId } = useAuth();
   const navigate = useNavigate();
   const [members, setMembers] = React.useState<any[]>([]);
   const [activities, setActivities] = React.useState<any[]>([]);
@@ -22,6 +25,7 @@ export default function Members() {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = React.useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = React.useState(false);
   const [editingMember, setEditingMember] = React.useState<any>(null);
+  const [viewingMember, setViewingMember] = React.useState<any>(null);
   const [deletingMember, setDeletingMember] = React.useState<{id: string, name: string} | null>(null);
   const [payingFineMember, setPayingFineMember] = React.useState<{id: string, name: string, finesDue: number} | null>(null);
   const [paymentAmount, setPaymentAmount] = React.useState<string>('');
@@ -37,7 +41,7 @@ export default function Members() {
       setMembers(fetchedMembers);
       setIsLoading(false);
     });
-  }, []);
+  }, [libraryId]);
 
   const filteredMembers = members.filter(m => {
     const matchesSearch = !searchQuery || 
@@ -45,7 +49,9 @@ export default function Members() {
       String(m.email || '').toLowerCase().includes(String(searchQuery || '').toLowerCase()) || String(m.username || '').toLowerCase().includes(String(searchQuery || '').toLowerCase()) ||
       String(m.id || '').toLowerCase().includes(String(searchQuery || '').toLowerCase());
       
-    const matchesType = selectedType === 'All' || m.membershipType === selectedType;
+    const matchesType = selectedType === 'All' || 
+      String(m.membershipType || '').toLowerCase() === selectedType.toLowerCase() ||
+      String(m.type || '').toLowerCase() === selectedType.toLowerCase();
     
     return matchesSearch && matchesType;
   });
@@ -62,10 +68,24 @@ export default function Members() {
       
       const allFines = await fetchFines();
       const memberFines = allFines.filter(f => f.memberId === payingFineMember.id && f.status === 'Unpaid');
-      // Simple logic: if fully paid, mark all as paid
+      
+      let remainingPayment = amount;
+      for (const f of memberFines) {
+        if (remainingPayment >= f.amount) {
+           remainingPayment -= f.amount;
+           await deleteFine(f.id); // Auto delete after pay
+        } else if (remainingPayment > 0) {
+           await updateFine(f.id, { amount: f.amount - remainingPayment });
+           remainingPayment = 0;
+        }
+      }
+      
+      // Fallback: if fully paid, ensure all remaining are deleted
       if (newFinesDue === 0) {
-        for (const f of memberFines) {
-           await updateFine(f.id, { status: 'Paid' });
+        const remainingFines = await fetchFines();
+        const stillUnpaid = remainingFines.filter(f => f.memberId === payingFineMember.id && f.status === 'Unpaid');
+        for (const f of stillUnpaid) {
+           await deleteFine(f.id);
         }
       }
 
@@ -312,6 +332,16 @@ export default function Members() {
           }
         }}
       />
+      
+      <MemberDetailsModal
+        isOpen={!!viewingMember}
+        member={viewingMember}
+        onClose={() => setViewingMember(null)}
+        onEdit={() => {
+          setEditingMember(viewingMember);
+          setViewingMember(null);
+        }}
+      />
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -319,7 +349,7 @@ export default function Members() {
           <p className="text-sm text-slate-500">View and manage library member accounts.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {selectedMemberIds.length > 0 && (
+          {role === 'Admin' && selectedMemberIds.length > 0 && (
             <Button variant="destructive" onClick={() => setIsBulkDeleteModalOpen(true)} className="w-full sm:w-auto bg-red-600 hover:bg-red-700">
               <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedMemberIds.length})
             </Button>
@@ -327,12 +357,16 @@ export default function Members() {
           <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto text-slate-600">
             <Download className="mr-2 h-4 w-4" /> Export to CSV
           </Button>
-          <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} className="w-full sm:w-auto">
-            <Upload className="mr-2 h-4 w-4" /> Bulk Import
-          </Button>
-          <Button onClick={() => setIsAddMemberModalOpen(true)} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" /> Add Member
-          </Button>
+          {role === 'Admin' && (
+            <>
+              <Button variant="outline" onClick={() => setIsBulkImportOpen(true)} className="w-full sm:w-auto">
+                <Upload className="mr-2 h-4 w-4" /> Bulk Import
+              </Button>
+              <Button onClick={() => setIsAddMemberModalOpen(true)} className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" /> Add Member
+              </Button>
+            </>
+          )}
         </div>
       </div>
       
@@ -359,8 +393,9 @@ export default function Members() {
             className="flex h-10 w-full sm:w-48 rounded-full bg-slate-50 px-4 py-2 text-sm text-[var(--color-text-main)] outline-none transition-colors border-transparent focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-200"
           >
             <option value="All">All Types</option>
-            <option value="Member">Member</option>
-            <option value="Staff">Staff</option>
+            {Array.from(new Set(members.map(m => m.membershipType || m.type || 'Member'))).map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -370,14 +405,16 @@ export default function Members() {
           <table className="w-full text-sm text-left">
             <thead className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 font-medium w-12 text-center">
-                  <input 
-                    type="checkbox" 
-                    checked={selectedMemberIds.length === filteredMembers.length && filteredMembers.length > 0}
-                    onChange={toggleSelectAll}
-                    className="rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 cursor-pointer"
-                  />
-                </th>
+                {role === 'Admin' && (
+                  <th className="px-6 py-4 font-medium w-12 text-center">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedMemberIds.length === filteredMembers.length && filteredMembers.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="px-6 py-4 font-medium">Member</th>
                 <th className="px-6 py-4 font-medium hidden md:table-cell">Username</th>
                 <th className="px-6 py-4 font-medium">Contact Info</th>
@@ -391,16 +428,18 @@ export default function Members() {
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {filteredMembers.map((member) => (
-                <tr key={member.id} onClick={() => setEditingMember(member)} className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedMemberIds.includes(member.id) ? 'bg-slate-50/50' : ''}`}>
-                  <td className="px-6 py-4 text-center">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedMemberIds.includes(member.id)}
-                      onChange={() => toggleSelectMember(member.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 cursor-pointer"
-                    />
-                  </td>
+                <tr key={member.id} onClick={() => setViewingMember(member)} className={`hover:bg-slate-50 transition-colors cursor-pointer ${selectedMemberIds.includes(member.id) ? 'bg-slate-50/50' : ''}`}>
+                  {role === 'Admin' && (
+                    <td className="px-6 py-4 text-center">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedMemberIds.includes(member.id)}
+                        onChange={() => toggleSelectMember(member.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-slate-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)] w-4 h-4 cursor-pointer"
+                      />
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <Avatar src={member.photoURL || undefined} fallback={member.fallback} />
@@ -465,12 +504,16 @@ export default function Members() {
                           <MessageSquare className="h-4 w-4" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={(e) => { e.stopPropagation(); setEditingMember(member); }} title="Edit Member">
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); setDeletingMember({id: member.id, name: member.name}); }} title="Delete Member">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {role === 'Admin' && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-500 hover:text-blue-700 hover:bg-blue-50" onClick={(e) => { e.stopPropagation(); setEditingMember(member); }} title="Edit Member">
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={(e) => { e.stopPropagation(); setDeletingMember({id: member.id, name: member.name}); }} title="Delete Member">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

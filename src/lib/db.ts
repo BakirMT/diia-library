@@ -8,8 +8,18 @@ import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, setDoc,
 import { db } from './firebase';
 import { MOCK_BOOKS, MOCK_MEMBERS } from './mock-data';
 
+let currentLibraryId: string | null = 'default_library';
+export const setLibraryContext = (id: string | null) => { currentLibraryId = id || 'default_library'; };
+
+const getCol = (colName: string) => {
+  return collection(db, 'libraries', currentLibraryId!, colName);
+};
+const getDocRef = (colName: string, id: string) => {
+  return doc(db, 'libraries', currentLibraryId!, colName, id);
+};
+
 export const fetchBooks = async () => {
-  const querySnapshot = await getDocs(collection(db, "books"));
+  const querySnapshot = await getDocs(getCol("books"));
   const books: any[] = [];
   querySnapshot.forEach((doc) => {
     books.push({ ...doc.data(), id: doc.id });
@@ -19,7 +29,7 @@ export const fetchBooks = async () => {
   if (books.length === 0 && !seeded) {
     console.log("No books found, seeding...");
     for (const book of MOCK_BOOKS) {
-      await setDoc(doc(db, "books", book.id), book);
+      await setDoc(getDocRef("books", book.id), book);
       books.push(book);
     }
     safeSetStorage('books_seeded', 'true');
@@ -28,7 +38,7 @@ export const fetchBooks = async () => {
 };
 
 export const fetchMembers = async () => {
-  const querySnapshot = await getDocs(collection(db, "members"));
+  const querySnapshot = await getDocs(getCol("members"));
   const members: any[] = [];
   querySnapshot.forEach((doc) => {
     members.push({ ...doc.data(), id: doc.id });
@@ -38,7 +48,7 @@ export const fetchMembers = async () => {
   if (members.length === 0 && !seeded) {
     console.log("No members found, seeding...");
     for (const member of MOCK_MEMBERS) {
-      await setDoc(doc(db, "members", member.id), member);
+      await setDoc(getDocRef("members", member.id), member);
       members.push(member);
     }
     safeSetStorage('members_seeded', 'true');
@@ -47,38 +57,77 @@ export const fetchMembers = async () => {
 };
 
 export const addBook = async (book: any) => {
-  const docRef = await addDoc(collection(db, "books"), book);
+  const docRef = await addDoc(getCol("books"), book);
   return { ...book, id: docRef.id };
 };
 
 export const addMember = async (member: any) => {
   if (member.id) {
-    await setDoc(doc(db, "members", member.id), member);
+    await setDoc(getDocRef("members", member.id), member);
     return member;
   } else {
-    const docRef = await addDoc(collection(db, "members"), member);
+    const docRef = await addDoc(getCol("members"), member);
     return { ...member, id: docRef.id };
   }
 };
 
 export const updateMember = async (id: string, updates: any) => {
-  await updateDoc(doc(db, "members", id), updates);
+  await updateDoc(getDocRef("members", id), updates);
 };
 
 export const deleteMember = async (id: string) => {
-  await deleteDoc(doc(db, "members", id));
+  try {
+    // Delete activities
+    const actsQuery = query(getCol("activities"), where("memberId", "==", id));
+    const actsSnap = await getDocs(actsQuery);
+    const actPromises = actsSnap.docs.map(d => deleteDoc(getDocRef("activities", d.id)));
+
+    // Delete fines
+    const finesQuery = query(getCol("fines"), where("memberId", "==", id));
+    const finesSnap = await getDocs(finesQuery);
+    const finePromises = finesSnap.docs.map(d => deleteDoc(getDocRef("fines", d.id)));
+
+    // Delete reservations
+    const resQuery = query(getCol("reservations"), where("memberId", "==", id));
+    const resSnap = await getDocs(resQuery);
+    const resPromises = resSnap.docs.map(d => deleteDoc(getDocRef("reservations", d.id)));
+
+    // Delete messages
+    const msgQuery = query(getCol("messages"), where("memberId", "==", id));
+    const msgSnap = await getDocs(msgQuery);
+    const msgPromises = msgSnap.docs.map(d => deleteDoc(getDocRef("messages", d.id)));
+
+    // Delete notifications
+    const notifQuery = query(getCol("notifications"), where("userId", "==", id));
+    const notifSnap = await getDocs(notifQuery);
+    const notifPromises = notifSnap.docs.map(d => deleteDoc(getDocRef("notifications", d.id)));
+
+    await Promise.all([
+      ...actPromises,
+      ...finePromises,
+      ...resPromises,
+      ...msgPromises,
+      ...notifPromises
+    ]);
+
+    // Finally, delete the member
+    await deleteDoc(getDocRef("members", id));
+  } catch (err) {
+    console.error("Error cascading delete for member:", err);
+    throw err;
+  }
 };
 
 
 export const updateBook = async (id: string, updates: any) => {
-  await updateDoc(doc(db, "books", id), updates);
+  await updateDoc(getDocRef("books", id), updates);
 };
 
 export const deleteBook = async (id: string) => {
-  await deleteDoc(doc(db, "books", id));
+  await deleteDoc(getDocRef("books", id));
 };
 export const fetchActivities = async () => {
-  const querySnapshot = await getDocs(collection(db, "activities"));
+  const querySnapshot = await getDocs(getCol("activities"));
   const activities: any[] = [];
   querySnapshot.forEach((doc) => {
     activities.push({ ...doc.data(), id: doc.id });
@@ -89,7 +138,7 @@ export const fetchActivities = async () => {
     console.log("No activities found, seeding...");
     const { MOCK_ACTIVITIES } = await import('./mock-data');
     for (const activity of MOCK_ACTIVITIES) {
-      await setDoc(doc(db, "activities", activity.id), activity);
+      await setDoc(getDocRef("activities", activity.id), activity);
       activities.push(activity);
     }
     safeSetStorage('activities_seeded', 'true');
@@ -98,7 +147,7 @@ export const fetchActivities = async () => {
 };
 
 export const fetchMessages = async (memberId: string, targetRole: 'Admin' | 'Librarian' = 'Admin') => {
-  const querySnapshot = await getDocs(collection(db, "messages"));
+  const querySnapshot = await getDocs(getCol("messages"));
   const messages: any[] = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
@@ -123,14 +172,14 @@ export const sendMessage = async (memberId: string, text: string, isSender: bool
   if (metadata) {
     newMsg.metadata = metadata;
   }
-  const docRef = await addDoc(collection(db, "messages"), newMsg);
+  const docRef = await addDoc(getCol("messages"), newMsg);
 
   try {
     if (!isSender) {
       // Sent by member -> notify admin
       let memberName = 'A member';
       try {
-        const memberSnap = await getDoc(doc(db, "members", memberId));
+        const memberSnap = await getDoc(getDocRef("members", memberId));
         if (memberSnap.exists()) {
           memberName = memberSnap.data().name || 'A member';
         }
@@ -158,26 +207,23 @@ export const sendMessage = async (memberId: string, text: string, isSender: bool
   return { id: docRef.id, ...newMsg };
 };
 
-export const fetchConversations = async (targetRole: 'Admin' | 'Librarian' = 'Admin') => {
+export const fetchConversations = async (targetRole: 'Admin' | 'Librarian' = 'Admin', currentLibrarianDocId: string = '') => {
   const members = await fetchMembers();
-  // We can fetch all messages to get the last message for each member, or just return members as conversations.
-  const querySnapshot = await getDocs(collection(db, "messages"));
-  const messages: any[] = [];
+  const librarians = await fetchLibrarians();
+  const querySnapshot = await getDocs(getCol("messages"));
+  const allMessages: any[] = [];
   querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    if ((data.targetRole || 'Admin') === targetRole) {
-      messages.push({ ...data, id: doc.id });
-    }
+    allMessages.push({ ...doc.data(), id: doc.id });
   });
 
-  // Only allow members with Active status and a password to use chat
   const permittedMembers = members.filter(m => m.status === 'Active' && m.password);
-  
-  const convos = permittedMembers.map((member: any) => {
-    const memberMessages = messages.filter(m => m.memberId === member.id).sort((a, b) => a.timestamp - b.timestamp);
-    const lastMsg = memberMessages.length > 0 ? memberMessages[memberMessages.length - 1] : null;
+  const convos: any[] = [];
 
-    return {
+  // Add members
+  permittedMembers.forEach((member: any) => {
+    const memberMessages = allMessages.filter(m => m.memberId === member.id && (m.targetRole || 'Admin') === targetRole).sort((a, b) => a.timestamp - b.timestamp);
+    const lastMsg = memberMessages.length > 0 ? memberMessages[memberMessages.length - 1] : null;
+    convos.push({
       id: member.id,
       name: member.name || 'Unknown',
       role: 'Member',
@@ -188,12 +234,45 @@ export const fetchConversations = async (targetRole: 'Admin' | 'Librarian' = 'Ad
       online: member.status === 'Active',
       photoURL: member.photoURL || undefined,
       avatar: member.fallback || (member.name ? member.name.substring(0, 2).toUpperCase() : '??')
-    };
+    });
   });
-  
-  // Sort by timestamp descending
+
+  if (targetRole === 'Admin') {
+    // Add Librarians
+    librarians.forEach((lib: any) => {
+      const libMessages = allMessages.filter(m => m.memberId === lib.id && (m.targetRole || 'Admin') === 'Admin').sort((a, b) => a.timestamp - b.timestamp);
+      const lastMsg = libMessages.length > 0 ? libMessages[libMessages.length - 1] : null;
+      convos.push({
+        id: lib.id,
+        name: lib.name || 'Librarian',
+        role: 'Librarian',
+        lastMessage: lastMsg ? lastMsg.text : 'No messages yet',
+        time: lastMsg ? lastMsg.time : '',
+        timestamp: lastMsg ? lastMsg.timestamp : 0,
+        unread: 0,
+        online: lib.status === 'Active',
+        avatar: lib.name ? lib.name.substring(0, 2).toUpperCase() : 'LI'
+      });
+    });
+
+  } else if (targetRole === 'Librarian') {
+    // Add Admin (The Librarian acts as the 'member' with their ID, talking to 'Admin')
+    const adminMessages = allMessages.filter(m => m.memberId === currentLibrarianDocId && (m.targetRole || 'Admin') === 'Admin').sort((a, b) => a.timestamp - b.timestamp);
+    const lastAdminMsg = adminMessages.length > 0 ? adminMessages[adminMessages.length - 1] : null;
+    convos.push({
+      id: 'admin',
+      name: 'Library Admin',
+      role: 'Admin',
+      lastMessage: lastAdminMsg ? lastAdminMsg.text : 'No messages yet',
+      time: lastAdminMsg ? lastAdminMsg.time : '',
+      timestamp: lastAdminMsg ? lastAdminMsg.timestamp : 0,
+      unread: 0,
+      online: true,
+      avatar: 'AD'
+    });
+  }
+
   convos.sort((a, b) => b.timestamp - a.timestamp);
-  
   return convos;
 };
 
@@ -208,7 +287,7 @@ export const addBooksBulk = async (books: any[]) => {
   for (const chunk of chunks) {
     const batch = writeBatch(db);
     chunk.forEach(book => {
-      const newRef = doc(collection(db, "books"));
+      const newRef = doc(getCol("books"));
       batch.set(newRef, book);
       savedBooks.push({ ...book, id: newRef.id });
     });
@@ -220,7 +299,7 @@ export const addBooksBulk = async (books: any[]) => {
 
 export const addReservation = async (reservation: any) => {
   try {
-    const docRef = await addDoc(collection(db, 'reservations'), reservation);
+    const docRef = await addDoc(getCol("reservations"), reservation);
     return { ...reservation, id: docRef.id };
   } catch (error) {
     console.error("Error adding reservation:", error);
@@ -231,7 +310,7 @@ export const addReservation = async (reservation: any) => {
 export const permitReservation = async (reservationId: string, bookId: string, memberId: string, messageId: string, permittedBy: string) => {
   try {
     // 1. Get the book
-    const bookSnap = await getDoc(doc(db, "books", bookId));
+    const bookSnap = await getDoc(getDocRef("books", bookId));
     if (!bookSnap.exists()) throw new Error("Book not found");
     const book = bookSnap.data();
 
@@ -239,7 +318,7 @@ export const permitReservation = async (reservationId: string, bookId: string, m
     const today = new Date();
     
     // Fetch member to get their name
-    const memberSnap = await getDoc(doc(db, "members", memberId));
+    const memberSnap = await getDoc(getDocRef("members", memberId));
     const memberName = memberSnap.exists() ? memberSnap.data().name : 'Unknown';
 
     const checkoutRecord = {
@@ -252,17 +331,17 @@ export const permitReservation = async (reservationId: string, bookId: string, m
       status: 'Completed',
       permittedBy
     };
-    await addDoc(collection(db, "activities"), checkoutRecord);
+    await addDoc(getCol("activities"), checkoutRecord);
 
     // 3. Update reservation status to Completed
     try {
-      await updateDoc(doc(db, "reservations", reservationId), { status: 'Completed' });
+      await updateDoc(getDocRef("reservations", reservationId), { status: 'Completed' });
     } catch (err: any) {
       console.warn("Direct update failed, querying for reservation ID", err);
-      const q = query(collection(db, "reservations"), where("id", "==", reservationId));
+      const q = query(getCol("reservations"), where("id", "==", reservationId));
       const snap = await getDocs(q);
       if (!snap.empty) {
-        await updateDoc(doc(db, "reservations", snap.docs[0].id), { status: 'Completed' });
+        await updateDoc(getDocRef("reservations", snap.docs[0].id), { status: 'Completed' });
       } else {
         throw new Error("Reservation document not found by ID or query.");
       }
@@ -270,7 +349,7 @@ export const permitReservation = async (reservationId: string, bookId: string, m
 
     // 4. Update book status to Checked Out if copies reached 0
     try {
-      await updateDoc(doc(db, "books", bookId), {
+      await updateDoc(getDocRef("books", bookId), {
         status: book.copiesAvailable === 0 ? 'Checked Out' : book.status
       });
     } catch (e) {
@@ -278,7 +357,7 @@ export const permitReservation = async (reservationId: string, bookId: string, m
     }
 
     // 5. Update the message metadata to show it was permitted for all related messages
-    const qMsgs = query(collection(db, "messages"), where("memberId", "==", memberId));
+    const qMsgs = query(getCol("messages"), where("memberId", "==", memberId));
     const msgsSnap = await getDocs(qMsgs);
     const batchMsgs = writeBatch(db);
     msgsSnap.forEach(docSnap => {
@@ -300,7 +379,7 @@ export const permitReservation = async (reservationId: string, bookId: string, m
 
 export const fetchReservations = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, 'reservations'));
+    const querySnapshot = await getDocs(getCol("reservations"));
     const reservations: any[] = [];
     querySnapshot.forEach((doc) => {
       reservations.push({ ...doc.data(), id: doc.id });
@@ -314,7 +393,7 @@ export const fetchReservations = async () => {
 
 export const fetchReservationsByMember = async (memberId: string) => {
   try {
-    const q = query(collection(db, 'reservations'), where('memberId', '==', memberId));
+    const q = query(getCol("reservations"), where('memberId', '==', memberId));
     const querySnapshot = await getDocs(q);
     const reservations: any[] = [];
     querySnapshot.forEach((doc) => {
@@ -329,7 +408,7 @@ export const fetchReservationsByMember = async (memberId: string) => {
 
 export const deleteReservation = async (id: string) => {
   try {
-    await deleteDoc(doc(db, 'reservations', id));
+    await deleteDoc(getDocRef("reservations", id));
   } catch (error) {
     console.error("Error deleting reservation:", error);
     throw error;
@@ -338,7 +417,7 @@ export const deleteReservation = async (id: string) => {
 
 export const updateReservation = async (id: string, updates: any) => {
   try {
-    await updateDoc(doc(db, 'reservations', id), updates);
+    await updateDoc(getDocRef("reservations", id), updates);
   } catch (error) {
     console.error("Error updating reservation:", error);
     throw error;
@@ -346,12 +425,12 @@ export const updateReservation = async (id: string, updates: any) => {
 }
 
 export const addActivity = async (activity: any) => {
-  const docRef = await addDoc(collection(db, "activities"), activity);
+  const docRef = await addDoc(getCol("activities"), activity);
   return { ...activity, id: docRef.id };
 };
 
 export const fetchStaff = async () => {
-  const q = getDocs(collection(db, "staff"));
+  const q = getDocs(getCol("staff"));
   const querySnapshot = await q;
   const staff: any[] = [];
   querySnapshot.forEach((doc) => {
@@ -361,22 +440,22 @@ export const fetchStaff = async () => {
 };
 
 export const addStaff = async (staffMember: any) => {
-  const docRef = await addDoc(collection(db, "staff"), staffMember);
+  const docRef = await addDoc(getCol("staff"), staffMember);
   return { ...staffMember, id: docRef.id };
 };
 
 export const updateStaff = async (id: string, updates: any) => {
-  const docRef = doc(db, "staff", id);
+  const docRef = getDocRef("staff", id);
   await updateDoc(docRef, updates);
 };
 
 export const deleteStaff = async (id: string) => {
-  const docRef = doc(db, "staff", id);
+  const docRef = getDocRef("staff", id);
   await deleteDoc(docRef);
 };
 
 export const fetchLibrarians = async () => {
-  const querySnapshot = await getDocs(collection(db, "librarians"));
+  const querySnapshot = await getDocs(getCol("librarians"));
   const librarians: any[] = [];
   querySnapshot.forEach((doc) => {
     librarians.push({ ...doc.data(), id: doc.id });
@@ -385,37 +464,37 @@ export const fetchLibrarians = async () => {
 };
 
 export const addLibrarian = async (librarian: any) => {
-  const docRef = await addDoc(collection(db, "librarians"), librarian);
+  const docRef = await addDoc(getCol("librarians"), librarian);
   return { ...librarian, id: docRef.id };
 };
 
 export const updateLibrarian = async (id: string, updates: any) => {
-  await updateDoc(doc(db, "librarians", id), updates);
+  await updateDoc(getDocRef("librarians", id), updates);
   return updates;
 };
 
 export const deleteLibrarian = async (id: string) => {
-  await deleteDoc(doc(db, "librarians", id));
+  await deleteDoc(getDocRef("librarians", id));
 };
 
 export const updateActivity = async (id: string, updates: any) => {
-  await updateDoc(doc(db, "activities", id), updates);
+  await updateDoc(getDocRef("activities", id), updates);
 };
 
 export const permitRenew = async (bookTitle: string, memberId: string, messageId: string, permittedBy: string) => {
   try {
     // 1. Find the pending Renew Request
-    const q = query(collection(db, "activities"), where("memberId", "==", memberId), where("bookTitle", "==", bookTitle), where("action", "==", "Renew Request"), where("status", "==", "Pending"));
+    const q = query(getCol("activities"), where("memberId", "==", memberId), where("bookTitle", "==", bookTitle), where("action", "==", "Renew Request"), where("status", "==", "Pending"));
     const snap = await getDocs(q);
     if (!snap.empty) {
-      await updateDoc(doc(db, "activities", snap.docs[0].id), { status: 'Completed' });
+      await updateDoc(getDocRef("activities", snap.docs[0].id), { status: 'Completed' });
     }
 
     // 2. Add Renew activity
-    const memberSnap = await getDoc(doc(db, "members", memberId));
+    const memberSnap = await getDoc(getDocRef("members", memberId));
     const memberName = memberSnap.exists() ? memberSnap.data().name : 'Unknown';
     
-    await addDoc(collection(db, "activities"), {
+    await addDoc(getCol("activities"), {
       id: `ACT-${Date.now()}`,
       memberId,
       memberName,
@@ -427,7 +506,7 @@ export const permitRenew = async (bookTitle: string, memberId: string, messageId
     });
 
     // 3. Update the message metadata to show it was permitted for all related messages
-    const qMsgs = query(collection(db, "messages"), where("memberId", "==", memberId));
+    const qMsgs = query(getCol("messages"), where("memberId", "==", memberId));
     const msgsSnap = await getDocs(qMsgs);
     const batchMsgs = writeBatch(db);
     msgsSnap.forEach(docSnap => {
@@ -448,7 +527,7 @@ export const permitRenew = async (bookTitle: string, memberId: string, messageId
 
 export const markConversationNotificationsRead = async (userId: string, memberName?: string) => {
   try {
-    const q = query(collection(db, 'notifications'), where('userId', '==', userId), where('unread', '==', true));
+    const q = query(getCol("notifications"), where('userId', '==', userId), where('unread', '==', true));
     const snap = await getDocs(q);
     
     // Check if there are unread notifications
@@ -481,7 +560,7 @@ export const markConversationNotificationsRead = async (userId: string, memberNa
 };
 
 export const deleteActivity = async (id: string) => {
-  await deleteDoc(doc(db, "activities", id));
+  await deleteDoc(getDocRef("activities", id));
 };
 
 export const addNotification = async (notification: {
@@ -493,7 +572,7 @@ export const addNotification = async (notification: {
   unread?: boolean;
 }) => {
   try {
-    const docRef = await addDoc(collection(db, 'notifications'), {
+    const docRef = await addDoc(getCol("notifications"), {
       ...notification,
       timestamp: notification.timestamp || Date.now(),
       unread: notification.unread !== undefined ? notification.unread : true,
@@ -506,7 +585,7 @@ export const addNotification = async (notification: {
 };
 
 export const fetchFines = async () => {
-  const querySnapshot = await getDocs(collection(db, "fines"));
+  const querySnapshot = await getDocs(getCol("fines"));
   const fines: any[] = [];
   querySnapshot.forEach((doc) => {
     fines.push({ ...doc.data(), id: doc.id });
@@ -515,12 +594,16 @@ export const fetchFines = async () => {
 };
 
 export const addFine = async (fine: any) => {
-  const docRef = await addDoc(collection(db, "fines"), fine);
+  const docRef = await addDoc(getCol("fines"), fine);
   return { id: docRef.id, ...fine };
 };
 
 export const updateFine = async (id: string, updates: any) => {
-  const fineRef = doc(db, "fines", id);
+  const fineRef = getDocRef("fines", id);
   await updateDoc(fineRef, updates);
+};
+
+export const deleteFine = async (id: string) => {
+  await deleteDoc(getDocRef("fines", id));
 };
 

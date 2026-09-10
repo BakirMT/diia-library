@@ -11,7 +11,7 @@ import { Link } from "react-router-dom"
 
 export default function Overdue() {
   const { settings } = useSettings();
-  const { role } = useAuth();
+  const {  role , libraryId } = useAuth();
   const [activities, setActivities] = React.useState<any[]>([])
   const [members, setMembers] = React.useState<any[]>([])
   const [books, setBooks] = React.useState<any[]>([])
@@ -25,7 +25,7 @@ export default function Overdue() {
     fetchActivities().then(setActivities)
     fetchMembers().then(setMembers)
     fetchBooks().then(setBooks)
-  }, [])
+  }, [libraryId])
 
   const overdueActivities = React.useMemo(() => {
     // 1. Map all activities to active states

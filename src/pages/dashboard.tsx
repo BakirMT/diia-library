@@ -11,12 +11,14 @@ import {
 import { fetchBooks, fetchMembers, fetchActivities, addNotification, sendMessage } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
 import { useSettings } from "@/src/lib/SettingsContext"
+import { db } from "@/src/lib/firebase"
+import { collection, query, where, onSnapshot } from "firebase/firestore"
 
 const COLORS = ['#24B1B1', '#1E293B', '#64748B', '#CBD5E1'];
 
 export default function Dashboard() {
   const { settings } = useSettings();
-  const { role } = useAuth();
+  const { role, libraryId } = useAuth();
   const [notified, setNotified] = React.useState<Set<string>>(new Set());
   const [currentTime, setCurrentTime] = React.useState(new Date());
   const [activeUsers, setActiveUsers] = React.useState(42);
@@ -29,15 +31,28 @@ export default function Dashboard() {
     activeMembers: 0,
     checkedOutBooks: 0,
     totalBooks: 0,
+    totalTitles: 0,
     overdueCheckIns: 0,
     categoriesCount: 0
   });
 
   React.useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    const usersTimer = setInterval(() => {
-      setActiveUsers(prev => Math.max(10, prev + Math.floor(Math.random() * 5) - 2));
-    }, 5000);
+    // Presence tracking
+    let unsubPresence = () => {};
+    if (settings?.libraryId) {
+      const q = query(collection(db, 'presence'), where('libraryId', '==', settings.libraryId));
+      unsubPresence = onSnapshot(q, (snap) => {
+        const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        let count = 0;
+        snap.forEach(doc => {
+          if (doc.data().lastActive > fiveMinsAgo) {
+            count++;
+          }
+        });
+        setActiveUsers(count);
+      });
+    }
     
     // Fetch real data
     Promise.all([fetchBooks(), fetchMembers(), fetchActivities()]).then(([books, members, activities]) => {
@@ -48,6 +63,7 @@ export default function Dashboard() {
         const categories = new Set();
         const catCounts: Record<string, number> = {};
         
+        stats.totalTitles = books.length;
         const booksWithCheckoutCount = books.map((b: any) => {
           if (!b) return { checkedOutCount: 0 };
           const t = b.copiesTotal || 0;
@@ -177,9 +193,9 @@ export default function Dashboard() {
 
     return () => {
       clearInterval(timer);
-      clearInterval(usersTimer);
+      unsubPresence();
     };
-  }, []);
+  }, [settings?.libraryId, libraryId]);
 
   const handleNotify = async (alert: any) => {
     try {
@@ -275,10 +291,10 @@ export default function Dashboard() {
         <Card>
           <div className="flex items-start justify-between p-5">
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Books</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Books (Copies)</p>
               <h3 className="mt-1 text-2xl font-bold text-slate-900">{stats.totalBooks.toLocaleString()}</h3>
               <p className="mt-2 text-xs text-slate-500 font-medium">
-                Across {stats.categoriesCount} categories
+                {stats.totalTitles || 0} unique titles
               </p>
             </div>
             <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">

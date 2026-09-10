@@ -67,6 +67,25 @@ export const MOCK_BOOKS = [
     rating: 4.9,
     cover: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=200&auto=format&fit=crop',
   }
+,
+  {
+    id: 'A004',
+    memberId: 'M001',
+    memberName: 'Eleanor Shellstrop',
+    action: 'Check In',
+    bookTitle: 'The Design of Everyday Things',
+    date: '2023-11-20T10:30:00Z',
+    status: 'Completed'
+  },
+  {
+    id: 'A005',
+    memberId: 'M004',
+    memberName: 'Jason Mendoza',
+    action: 'Check In',
+    bookTitle: 'Clean Code',
+    date: '2023-11-20T10:30:00Z',
+    status: 'Completed'
+  }
 ] as const;
 
 export const MOCK_MEMBERS = [
@@ -154,3 +173,4 @@ export const MOCK_ACTIVITIES = [
     status: 'Overdue'
   }
 ] as const;
+

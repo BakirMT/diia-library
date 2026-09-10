@@ -5,12 +5,12 @@ import { BookOpen, CheckCircle, Clock, AlertCircle, CreditCard, RotateCw } from 
 import { useAuth } from "@/src/lib/AuthContext"
 import { useSettings } from "@/src/lib/SettingsContext"
 import { db } from "@/src/lib/firebase"
-import { collection, getDocs, doc, getDoc, addDoc } from "firebase/firestore"
+import { collection, getDocs, doc, getDoc, addDoc, collectionGroup, query, where } from "firebase/firestore"
 import { Button } from "@/src/components/ui/button"
 import { sendMessage, fetchFines } from "@/src/lib/db"
 
 export default function StudentLoans() {
-  const { user } = useAuth();
+  const {  user , libraryId } = useAuth();
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = React.useState('checked-out');
   const [memberInfo, setMemberInfo] = React.useState<any>(null);
@@ -30,7 +30,7 @@ export default function StudentLoans() {
         const userData = userDoc.exists() ? userDoc.data() : null;
         
         // 2. Find matching member
-        const membersSnap = await getDocs(collection(db, 'members'));
+        const membersSnap = await getDocs(collectionGroup(db, 'members'));
         let matchedMember = null;
 
         const isEmailMatch = (email1: string, email2: string) => {
@@ -49,7 +49,7 @@ export default function StudentLoans() {
             (user.email && isEmailMatch(data.email, user.email)) ||
             user.email === internalEmail
           ) {
-            matchedMember = { id: d.id, ...data };
+            matchedMember = { id: d.id, libraryId: d.ref.parent?.parent?.id, ...data };
           }
         });
         
@@ -61,10 +61,11 @@ export default function StudentLoans() {
         setMemberInfo(matchedMember);
         
         // 3. Get activities for this member
-        const activitiesSnap = await getDocs(collection(db, 'activities'));
+        const q = query(collectionGroup(db, 'activities'), where('memberId', '==', matchedMember.id));
+        const activitiesSnap = await getDocs(q);
         const memberActivities = activitiesSnap.docs
           .map(d => ({ id: d.id, ...d.data() } as any))
-          .filter(a => a.memberId === (matchedMember as any).id)
+          
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           
         // Reconstruct state
@@ -135,7 +136,7 @@ export default function StudentLoans() {
         });
         
         // Fetch books to get cover images
-        const booksSnap = await getDocs(collection(db, 'books'));
+        const booksSnap = await getDocs(collectionGroup(db, 'books'));
         const booksMap = new Map();
         booksSnap.forEach(b => {
            const data = b.data();
@@ -235,7 +236,7 @@ export default function StudentLoans() {
 
     try {
       // Add Activity
-      await addDoc(collection(db, "activities"), {
+      await addDoc(collection(db, 'libraries', memberInfo?.libraryId || 'default_library', 'activities'), {
         id: `ACT-${Date.now()}`,
         memberId: memberInfo.id,
         memberName: memberInfo.name || 'Unknown',
@@ -246,7 +247,7 @@ export default function StudentLoans() {
       });
 
       // Add Notification for Member
-      await addDoc(collection(db, "notifications"), {
+      await addDoc(collection(db, 'libraries', (typeof memberInfo !== 'undefined' ? memberInfo?.libraryId : (typeof matchedMember !== 'undefined' ? matchedMember?.libraryId : 'default_library')), 'notifications'), {
         userId: memberInfo.id,
         title: 'Renew Requested',
         message: `You have requested to renew "${loan.title}". This is pending librarian approval.`,
@@ -256,7 +257,7 @@ export default function StudentLoans() {
       });
 
       // Add Notification for Admin
-      await addDoc(collection(db, "notifications"), {
+      await addDoc(collection(db, 'libraries', (typeof memberInfo !== 'undefined' ? memberInfo?.libraryId : (typeof matchedMember !== 'undefined' ? matchedMember?.libraryId : 'default_library')), 'notifications'), {
         userId: 'admin',
         title: 'Renew Request',
         message: `${memberInfo.name} has requested to renew "${loan.title}".`,

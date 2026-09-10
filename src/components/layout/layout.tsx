@@ -1,11 +1,13 @@
 import * as React from "react"
 import { useState } from "react"
 import { Outlet } from "react-router-dom"
+import { useAuth } from "@/src/lib/AuthContext"
 import { Sidebar } from "./sidebar"
 import { Topbar } from "./topbar"
 
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { libraryId } = useAuth();
 
   return (
     <div className="flex h-screen w-full bg-[var(--color-background)] overflow-hidden print:h-auto print:overflow-visible">
@@ -14,7 +16,7 @@ export function Layout() {
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 print:overflow-visible print:p-0">
           <div className="mx-auto w-full max-w-7xl">
-            <Outlet />
+            <Outlet key={libraryId || 'default'} />
           </div>
         </main>
       </div>

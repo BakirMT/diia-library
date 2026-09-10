@@ -3,7 +3,7 @@ import { Card } from "@/src/components/ui/card"
 import { Input } from "@/src/components/ui/input"
 import { Button } from "@/src/components/ui/button"
 import { Avatar } from "@/src/components/ui/avatar"
-import { Search, Send, Paperclip, MoreVertical, Phone, Video, Info, ArrowLeft } from "lucide-react"
+import { Search, Send, Paperclip, Info, ArrowLeft } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 import { fetchConversations, fetchMessages, sendMessage, permitReservation, permitRenew, addNotification, markConversationNotificationsRead } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
@@ -12,7 +12,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore"
 
 
 export default function Inbox() {
-  const { role } = useAuth();
+  const { user, role, libraryId } = useAuth();
   const currentRole = (role === 'Librarian' ? 'Librarian' : 'Admin') as 'Admin' | 'Librarian';
   
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,9 +24,33 @@ export default function Inbox() {
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [currentLibrarianDocId, setCurrentLibrarianDocId] = React.useState<string | null>(null);
+
+  
+  React.useEffect(() => {
+    const init = async () => {
+      if (currentRole === 'Librarian' && user && user.email) {
+        // extract username from email
+        let username = user.email.split('@')[0];
+        if (username.startsWith(libraryId + '-')) {
+          username = username.substring(libraryId.length + 1);
+        }
+        
+        const { fetchLibrarians } = await import('@/src/lib/db');
+        const librarians = await fetchLibrarians();
+        const me = librarians.find(l => l.username?.toLowerCase() === username.toLowerCase());
+        if (me) {
+          setCurrentLibrarianDocId(me.id);
+        }
+      }
+    };
+    init();
+  }, [user, currentRole, libraryId]);
 
   React.useEffect(() => {
-    fetchConversations(currentRole).then(convos => {
+    if (currentRole === 'Librarian' && !currentLibrarianDocId) return; // Wait until resolved
+    fetchConversations(currentRole, currentLibrarianDocId || '').then(convos => {
+
       setConversations(convos);
       const memberId = searchParams.get('memberId');
       
@@ -45,17 +69,29 @@ export default function Inbox() {
         setActiveConversation(active);
       }
     });
-  }, [currentRole]);
+  }, [currentRole, currentLibrarianDocId]);
 
   React.useEffect(() => {
     if (!activeConversation) return;
 
-    const q = query(collection(db, "messages"), where("memberId", "==", activeConversation.id));
+    // Fix: Scoped to the current library via libraryId context in DB
+    const currentLibraryId = libraryId || 'default_library';
+    
+    let targetMemberId = activeConversation.id;
+    let listenTargetRole = currentRole;
+    if (activeConversation.role === 'Admin') {
+       targetMemberId = currentLibrarianDocId!;
+       listenTargetRole = 'Admin';
+    } else if (activeConversation.role === 'Librarian') {
+       listenTargetRole = 'Admin'; // Admin talking to Librarian uses Admin targetRole
+    }
+    
+    const q = query(collection(db, 'libraries', currentLibraryId, 'messages'), where("memberId", "==", targetMemberId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: any[] = [];
       snapshot.forEach(doc => {
         const data = doc.data();
-        if ((data.targetRole || 'Admin') === currentRole) {
+        if ((data.targetRole || 'Admin') === listenTargetRole) {
           msgs.push({ id: doc.id, ...data });
         }
       });
@@ -64,13 +100,13 @@ export default function Inbox() {
       setMessagesByConv(prev => ({
         ...prev,
         [activeConversation.id]: msgs
-      }));
+        }));
     });
 
     markConversationNotificationsRead(currentRole.toLowerCase(), activeConversation.name);
     
     return () => unsubscribe();
-  }, [activeConversation, currentRole]);
+  }, [activeConversation, currentRole, currentLibrarianDocId]);
 
   const currentMessages = activeConversation ? (messagesByConv[activeConversation.id] || []) : [];
 
@@ -144,7 +180,17 @@ export default function Inbox() {
     setNewMessage('');
     
     try {
-      const newMsg = await sendMessage(activeConversation.id, text, true, currentRole);
+      let newMsg;
+      if (activeConversation.role === 'Admin') {
+        // We are Librarian talking to Admin
+        newMsg = await sendMessage(currentLibrarianDocId!, text, false, 'Admin');
+      } else if (activeConversation.role === 'Librarian') {
+        // We are Admin talking to Librarian
+        newMsg = await sendMessage(activeConversation.id, text, true, 'Admin');
+      } else {
+        // Talking to a Member
+        newMsg = await sendMessage(activeConversation.id, text, true, currentRole);
+      }
       addMessageToUI(newMsg);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -253,17 +299,7 @@ export default function Inbox() {
                   <p className="text-xs text-slate-500">{activeConversation.role}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 rounded-full hidden sm:inline-flex">
-                  <Phone className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 rounded-full hidden sm:inline-flex">
-                  <Video className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-600 rounded-full">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </div>
+              
             </div>
 
             {/* Messages */}
@@ -277,18 +313,20 @@ export default function Inbox() {
                   <div className="text-center text-slate-500 text-sm mt-4">No messages yet. Send a message to start the conversation!</div>
                 ) : null}
                 
-                {currentMessages.map((msg) => (
+                {currentMessages.map((msg) => {
+                  const amISender = activeConversation.role === 'Admin' ? !msg.isSender : msg.isSender;
+                  return (
                   <div 
                     key={msg.id} 
-                    className={`flex max-w-[80%] ${msg.isSender ? 'ml-auto justify-end' : ''}`}
+                    className={`flex max-w-[80%] ${amISender ? 'ml-auto justify-end' : ''}`}
                   >
-                    {!msg.isSender && (
+                    {!amISender && (
                       <Avatar src={activeConversation.photoURL} fallback={activeConversation.avatar} size="sm" className="h-8 w-8 mr-2 shrink-0 mt-auto mb-1" />
                     )}
-                    <div className={`flex flex-col ${msg.isSender ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex flex-col ${amISender ? 'items-end' : 'items-start'}`}>
                       <div 
                         className={`px-4 py-2.5 rounded-2xl text-sm ${
-                          msg.isSender 
+                          amISender 
                             ? 'bg-[var(--color-primary)] text-white rounded-br-sm' 
                             : 'bg-white border border-slate-100 text-slate-700 rounded-bl-sm shadow-sm'
                         }`}
@@ -304,7 +342,7 @@ export default function Inbox() {
                               <Button 
                                 size="sm" 
                                 onClick={() => handlePermitReservation(msg)}
-                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-teal-600"}
+                                className={amISender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-teal-600"}
                               >
                                 Permit Reservation
                               </Button>
@@ -321,7 +359,7 @@ export default function Inbox() {
                               <Button 
                                 size="sm" 
                                 onClick={() => handlePermitRenew(msg)}
-                                className={msg.isSender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-teal-600"}
+                                className={amISender ? "bg-white text-[var(--color-primary)] hover:bg-slate-50" : "bg-[var(--color-primary)] text-white hover:bg-teal-600"}
                               >
                                 Permit Renew
                               </Button>
@@ -332,7 +370,7 @@ export default function Inbox() {
                       <span className="text-[10px] text-slate-400 mt-1 px-1">{msg.time}</span>
                     </div>
                   </div>
-                ))}
+                );})}
                 <div ref={messagesEndRef} />
               </div>
             </div>

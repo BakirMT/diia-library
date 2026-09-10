@@ -6,14 +6,14 @@ import { Input } from "@/src/components/ui/input"
 import { Badge } from "@/src/components/ui/badge"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
-import { collection, getDocs, doc, getDoc } from "firebase/firestore"
+import { collection, collectionGroup, getDocs, doc, getDoc, query, where } from "firebase/firestore"
 import { Link } from "react-router-dom"
 import { useSettings } from "@/src/lib/SettingsContext"
 import { fetchFines } from "@/src/lib/db"
 
 
 export default function StudentDashboard() {
-  const { user } = useAuth();
+  const {  user , libraryId } = useAuth();
   const { settings } = useSettings();
   const [checkedOut, setCheckedOut] = React.useState<any[]>([]);
   const [overdue, setOverdue] = React.useState<any[]>([]);
@@ -28,7 +28,7 @@ export default function StudentDashboard() {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         const userData = userDoc.exists() ? userDoc.data() : null;
         
-        const membersSnap = await getDocs(collection(db, 'members'));
+        const membersSnap = await getDocs(collectionGroup(db, 'members'));
         let matchedMember = null;
 
         const isEmailMatch = (email1: string, email2: string) => {
@@ -47,7 +47,7 @@ export default function StudentDashboard() {
             (user.email && isEmailMatch(data.email, user.email)) ||
             user.email === internalEmail
           ) {
-            matchedMember = { id: d.id, ...data };
+            matchedMember = { id: d.id, libraryId: d.ref.parent?.parent?.id, ...data };
           }
         });
 
@@ -55,10 +55,11 @@ export default function StudentDashboard() {
         if (!matchedMember) { setIsLoading(false); return; }
         setMemberInfo(matchedMember);
         
-        const activitiesSnap = await getDocs(collection(db, 'activities'));
+        const q = query(collectionGroup(db, 'activities'), where('memberId', '==', matchedMember.id));
+        const activitiesSnap = await getDocs(q);
         const memberActivities = activitiesSnap.docs
           .map(d => ({ id: d.id, ...d.data() } as any))
-          .filter(a => a.memberId === (matchedMember as any).id)
+          
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
           
         const bookStates = new Map<string, any>();
@@ -87,7 +88,7 @@ export default function StudentDashboard() {
         });
 
         
-        const booksSnap = await getDocs(collection(db, 'books'));
+        const booksSnap = await getDocs(collectionGroup(db, 'books'));
         const booksMap = new Map();
         booksSnap.forEach(b => booksMap.set(b.data().title, b.data()));
         

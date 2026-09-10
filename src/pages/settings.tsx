@@ -7,6 +7,7 @@ import { Avatar } from "@/src/components/ui/avatar"
 
 import { AddStaffModal, StaffMember } from "@/src/components/settings/add-staff-modal"
 
+import { fetchLibrarians, addLibrarian, updateLibrarian, deleteLibrarian } from "@/src/lib/db";
 import { useSettings, CURRENCY_SYMBOLS } from "@/src/lib/SettingsContext"
 import { useAuth } from "@/src/lib/AuthContext"
 import { updateProfile } from "firebase/auth";
@@ -14,6 +15,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/src/lib/firebase";
 
 export default function Settings() {
+  const { user, role, libraryId } = useAuth();
   const { settings, updateSettings } = useSettings();
   const [activeTab, setActiveTab] = React.useState('profile');
   const [isSaving, setIsSaving] = React.useState(false);
@@ -54,32 +56,32 @@ export default function Settings() {
 
   const [isAddStaffModalOpen, setIsAddStaffModalOpen] = React.useState(false);
   const [editingStaff, setEditingStaff] = React.useState<StaffMember | null>(null);
-  const [staffList, setStaffList] = React.useState<StaffMember[]>([
-    { id: '1', name: 'Jane Doe', username: 'janedoe', email: 'jane.doe@library.com', role: 'Admin', status: 'Active' },
-    { id: '2', name: 'Mark Smith', username: 'marksmith', email: 'mark.smith@library.com', role: 'Librarian', status: 'Active' },
-    { id: '3', name: 'Emily Chen', username: 'emilychen', email: 'emily.chen@library.com', role: 'Assistant', status: 'Inactive' },
-  ]);
-
-  const handleSaveStaff = (staffData: Omit<StaffMember, 'id'>) => {
-    if (editingStaff) {
-      setStaffList(prev => prev.map(s => s.id === editingStaff.id ? { ...s, ...staffData } : s));
-    } else {
-      setStaffList(prev => [...prev, { ...staffData, id: Math.random().toString(36).substr(2, 9) }]);
-    }
-  };
-
-  const handleDeleteStaff = (id: string) => {
-    if (confirm("Are you sure you want to delete this staff member?")) {
-      setStaffList(prev => prev.filter(s => s.id !== id));
-    }
-  };
-
-  const handleMessageStaff = (email: string) => {
-    window.location.href = 'mailto:' + email;
-  };
+  const [staffList, setStaffList] = React.useState<StaffMember[]>([]);
   
-  const { user, role } = useAuth();
-  const [firstName, setFirstName] = React.useState('');
+  React.useEffect(() => {
+    fetchLibrarians().then(setStaffList);
+  }, [libraryId]);
+
+  const handleSaveStaff = async (staffData: Omit<StaffMember, 'id'>) => {
+    if (editingStaff) {
+      await updateLibrarian(editingStaff.id, staffData);
+      fetchLibrarians().then(setStaffList);
+    } else {
+      await addLibrarian(staffData);
+      fetchLibrarians().then(setStaffList);
+    }
+  };
+
+  const handleDeleteStaff = async (id: string) => {
+    if (confirm("Are you sure you want to delete this staff member?")) {
+      await deleteLibrarian(id);
+      fetchLibrarians().then(setStaffList);
+    }
+  };
+
+  
+  
+    const [firstName, setFirstName] = React.useState('');
   const [lastName, setLastName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [photoURL, setPhotoURL] = React.useState('');
@@ -552,7 +554,7 @@ export default function Settings() {
                   <CardTitle>Staff & Roles</CardTitle>
                   <CardDescription>Manage staff accounts and their access permissions.</CardDescription>
                 </div>
-                <Button size="sm" onClick={() => { setEditingStaff(null); setIsAddStaffModalOpen(true); }}>Add Staff</Button>
+                <Button size="sm" onClick={() => { setEditingStaff(null); setIsAddStaffModalOpen(true); }}>Add Librarian</Button>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto rounded-xl ring-1 ring-slate-100">
@@ -579,9 +581,7 @@ export default function Settings() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="text-slate-500 h-8 w-8 hover:text-[var(--color-primary)] hover:bg-teal-50" onClick={() => handleMessageStaff(staff.email)}>
-                                <Mail className="h-4 w-4" />
-                              </Button>
+                              
                               <Button variant="ghost" size="sm" className="text-slate-500 h-8 hover:text-slate-900" onClick={() => {
                                 setEditingStaff(staff);
                                 setIsAddStaffModalOpen(true);

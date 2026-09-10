@@ -6,11 +6,11 @@ import { Avatar } from "@/src/components/ui/avatar"
 import { Send, Paperclip, Shield, BookOpen } from "lucide-react"
 import { fetchMessages, sendMessage, markConversationNotificationsRead } from "@/src/lib/db"
 import { useAuth } from "@/src/lib/AuthContext"
-import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from "firebase/firestore"
+import { doc, getDoc, collection, collectionGroup, query, where, getDocs, onSnapshot } from "firebase/firestore"
 import { db } from "@/src/lib/firebase"
 
 export default function StudentInbox() {
-  const { user } = useAuth();
+  const {  user , libraryId } = useAuth();
   const [memberId, setMemberId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<any[]>([]);
   const [newMessage, setNewMessage] = React.useState('');
@@ -25,7 +25,7 @@ export default function StudentInbox() {
         const userSnap = await getDoc(userRef);
         const userData = userSnap.exists() ? userSnap.data() : null;
 
-        const membersSnap = await getDocs(collection(db, 'members'));
+        const membersSnap = await getDocs(collectionGroup(db, 'members'));
         
         const isEmailMatch = (email1: string, email2: string) => {
           if (!email1 || !email2) return false;
@@ -57,7 +57,9 @@ export default function StudentInbox() {
     if (!memberId) return;
 
     // Use onSnapshot for real-time updates
-    const q = query(collection(db, "messages"), where("memberId", "==", memberId));
+    // Fix: Scope properly using the student's libraryId
+    const currentLibraryId = libraryId || 'default_library';
+    const q = query(collection(db, 'libraries', currentLibraryId, 'messages'), where("memberId", "==", memberId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: any[] = [];
       snapshot.forEach((doc) => {

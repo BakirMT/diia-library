@@ -6,11 +6,11 @@ import { Avatar } from "@/src/components/ui/avatar"
 import { useSettings } from "@/src/lib/SettingsContext"
 import { useAuth } from "@/src/lib/AuthContext"
 import { db } from "@/src/lib/firebase"
-import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
+import { collection, collectionGroup, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
 
 export default function StudentSettings() {
   const { settings, updateSettings } = useSettings();
-  const { user } = useAuth();
+  const {  user , libraryId } = useAuth();
   
   const [memberInfo, setMemberInfo] = React.useState<any>(null);
   const [name, setName] = React.useState('');
@@ -30,7 +30,7 @@ export default function StudentSettings() {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         const userData = userDoc.exists() ? userDoc.data() : null;
         
-        const membersSnap = await getDocs(collection(db, 'members'));
+        const membersSnap = await getDocs(collectionGroup(db, 'members'));
         let matchedMember = null;
         const isEmailMatch = (email1: string, email2: string) => {
           if (!email1 || !email2) return false;
@@ -47,7 +47,7 @@ export default function StudentSettings() {
             (user.email && isEmailMatch(data.email, user.email)) ||
             user.email === internalEmail
           ) {
-            matchedMember = { id: d.id, ...data };
+            matchedMember = { id: d.id, libraryId: d.ref.parent?.parent?.id, ...data };
           }
         });
         
