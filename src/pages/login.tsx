@@ -310,7 +310,7 @@ export default function Login() {
 
                         
             
-            <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
+            <form onSubmit={handleEmailLogin} className="space-y-4 mb-6" autoComplete="off">
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-slate-700">Username</label>
                 <div className="relative">
@@ -323,6 +323,8 @@ export default function Login() {
                       value={usernameOrEmail}
                     onChange={(e) => setUsernameOrEmail(e.target.value)}
                     className="pl-10 h-11"
+                    autoComplete="off"
+                    name="random_username_field"
                     required
                   />
                 </div>
@@ -339,6 +341,8 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 h-11"
+                    autoComplete="new-password"
+                    name="random_password_field"
                     required
                   />
                 </div>
